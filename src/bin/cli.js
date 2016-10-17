@@ -5,9 +5,7 @@ var program = require('commander');
 import path from 'path';
 import { has } from 'lodash';
 import { version } from '../../package.json';
-import  Cf from '../CF';
-
-var CF = new Cf();
+import * as Codeforces from '../..';
 
 
 /**
@@ -22,7 +20,7 @@ function list(val){
 
 program
     .version(version)
-    .usage('cf [program] [options]');
+    .usage('Codeforces [program] [options]');
 
 
 program
@@ -36,8 +34,7 @@ program
             codeFile: codeFile
         };
 
-        CF.submitSolution(options);
-
+        Codeforces.submit(options);
     });
 
 
@@ -46,7 +43,7 @@ program
     .command('stat <handle>')
     .description('user tags status')
     .action( (handle,prg) => {
-        CF.userTagStatus({ handle: handle });
+         Codeforces.usertags({ handle: handle });
     });
 
 
@@ -61,7 +58,7 @@ program
 
         if( has(prg,'user') ){
             let noChart = prg.parent.rawArgs.indexOf('--no-chart') !== -1;
-            return CF.userRating(prg.user,noChart);
+            return Codeforces.userrating(prg.user,noChart);
         }
 
         if( has(prg,'country') ){
@@ -70,7 +67,6 @@ program
         }
 
         program.outputHelp();
-        process.exit(1);
     });
 
 
@@ -78,7 +74,7 @@ program
     .command('tags')
     .description('All tags and their status')
     .action( () => {
-        CF.getTags();
+        Codeforces.tags();
     });
 
 
@@ -97,7 +93,6 @@ program
             console.log('Also future');
         }
 
-        process.exit(0);
     });
 
 
@@ -107,8 +102,6 @@ program
     .action( (handle) => {
 
         console.log(handle);
-
-        process.exit(0);
     });
 
 program
@@ -123,7 +116,6 @@ program
             console.log(path.resolve(prg.dir));
 
         }
-
 
         process.exit(0);
     });
