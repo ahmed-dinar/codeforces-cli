@@ -84,3 +84,13 @@ export function checkPath(directory, isFile, callback) {
 export function getCWD(fileName) {
     return path.join(path.resolve(process.cwd()), fileName);
 }
+
+
+/**
+ * Validator for console promt [inquirer]
+ * @param inpt
+ * @returns {boolean}
+ */
+export function validateEmpty(inpt) {
+    return inpt.length > 0;
+}

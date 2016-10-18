@@ -32,6 +32,12 @@ var problemHeaders = {
     "Accept-Language": "en-US,en;q=0.8"
 };
 
+
+/**
+ *
+ * @param options
+ * @param callback
+ */
 export default (options, callback) => {
 
     var hrstart = process.hrtime();
@@ -62,7 +68,12 @@ export default (options, callback) => {
         let hrend = process.hrtime(hrstart);
         console.log(` Total ${totalSubmissions} submissions saved`);
         console.log(" Execution time: %ds %dms", hrend[0], hrend[1] / 1000000);
-        return callback(err,res);
+
+        if( typeof callback === 'function' ){
+            return callback(err,res);
+        }
+
+
     });
 }
 

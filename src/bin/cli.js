@@ -4,8 +4,12 @@
 var program = require('commander');
 import path from 'path';
 import { has } from 'lodash';
+import chalk from 'chalk';
 import { version } from '../../package.json';
 import * as Codeforces from '../..';
+import { log } from '../lib/helpers';
+
+var DEFAULT_DELAY = 5000;
 
 
 /**
@@ -20,18 +24,56 @@ function list(val){
 
 program
     .version(version)
-    .usage('Codeforces [program] [options]');
+    .usage('cf [program] [options]');
 
 
 program
-    .command('submit <contest-id> <problem-no> <code-file-path>')
+    .command('runs')
+    .option('-r, --remember', 'save handle for future')
+    .option('-c, --count <total>', 'total submission status to display')
+    .option('-w, --watch', 'watch submission status live')
+    .option('--delay <delay>', 'refreshing delay of live submission status [in millisecond]')
+    .description('user submission status')
+    .action( (prg) => {
+        let remember = has(prg,'remember');
+        let total = has(prg,'count') ? parseInt(prg.count) : 1;
+        let watch = has(prg,'watch');
+        let delay = has(prg,'delay') ? parseInt(prg.delay) : DEFAULT_DELAY;
+        Codeforces.submission(remember, total, watch, delay);
+    });
+
+
+program
+    .command('submit <contest-id> <problem-no> <solution-file>')
+    .option('-r, --remember', 'save/update password for future login')
+    .option('-l, --logout', 'delete saved password')
+    .option('-w, --watch', 'watch submission status live')
+    .option('-c, --count <total>', 'total live submission status to display [max 10]')
+    .option('--delay <delay>', 'refreshing delay of live submission status [in millisecond]')
     .description('submit solution')
-    .action( (cid,pnum,codeFile) => {
+    .action( (cid,pnum,codeFile,prg) => {
+
+        let remember = has(prg,'remember');
+        let logout = has(prg,'logout');
+
+        if( remember && logout ){
+            log('');
+            log( chalk.bold.red(`  Error: Please select either remember or logout`) );
+            return;
+        }
+
+        let total = has(prg,'count') ? parseInt(prg.count) : 1;
+        let delay = has(prg,'delay') ? parseInt(prg.delay) : DEFAULT_DELAY;
 
         let options = {
             contestId: cid,
             problemIndex: pnum,
-            codeFile: codeFile
+            codeFile: codeFile,
+            remember: remember,
+            logout: logout,
+            totalRuns: total,
+            delay: delay,
+            watch: has(prg,'watch')
         };
 
         Codeforces.submit(options);
@@ -45,6 +87,9 @@ program
     .action( (handle,prg) => {
          Codeforces.usertags({ handle: handle });
     });
+
+
+
 
 
 
@@ -106,18 +151,18 @@ program
 
 program
     .command('solutions <handle>')
-    .option('-d, --dir <directory>','directory to save data')
+    .option('-d, --directory <directory>','directory to save solutions')
+    .option('-p, --problem','also download problem statement')
     .description('User info')
     .action( (handle,prg) => {
 
-        console.log(handle);
-        if( has(prg,'dir') ){
-            console.log(prg.dir);
-            console.log(path.resolve(prg.dir));
+        let options = {
+            handle: handle,
+            withProblem: has(prg,'problem'),
+            dir: has(prg,'dir') ? prg.dir : '.'
+        };
 
-        }
-
-        process.exit(0);
+        Codeforces.sourcecode(options);
     });
 
 

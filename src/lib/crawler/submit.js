@@ -5,13 +5,17 @@ import { waterfall } from 'async';
 import request from 'request';
 import debug from 'debug';
 import cheerio from 'cheerio';
+import chalk from 'chalk';
 import path from 'path';
 import fs from 'fs';
+import ora from 'ora';
+import { line } from 'cli-spinners';
 import jsonfile from 'jsonfile';
 import CryptoJS from 'crypto-js';
 import inquirer from 'inquirer';
 import languages from '../languages';
-import { getCWD, checkPath, log, logr, getHomeDir } from '../helpers';
+import { getCWD, checkPath, log, logr, getHomeDir, validateEmpty } from '../helpers';
+import submission from '../api/submission'
 
 //
 // Should not be here.
@@ -20,6 +24,11 @@ var HASH_SECRET = 'thisisverysecret';
 var cookieJar = request.jar();
 var cookieRequest = request.defaults({ jar: cookieJar });
 var debugs = debug('CF:submit');
+var spinner = ora({
+    text: 'Loading data...',
+    spinner: line
+});
+var TIME_OUT = 30000;
 
 
 /**
@@ -29,15 +38,21 @@ var debugs = debug('CF:submit');
  */
 export default (options = {}) => {
 
+    log('');
+
     let isMissing = !_.has(options,'codeFile') || !_.has(options,'contestId') || !_.has(options,'problemIndex');
     if( isMissing ){
         logr(`Missing credentials.`);
         return;
     }
 
+
     options.codePath = getCWD(options.codeFile);
     options.form = "http://codeforces.com/enter";   //login url
     options.nextForm = "http://codeforces.com/problemset/submit";
+
+    spinner.text = `Starting process...`;
+    spinner.start();
 
     waterfall([
         (callback) => {
@@ -50,13 +65,23 @@ export default (options = {}) => {
         login,
         getCSRFToken,
         submitSolution
-    ],function (err,res) {
+    ], (err,res) => {
 
         if(err){
+            spinner.fail();
+            if( typeof err === 'string' ){
+                spinner.text = chalk.bold.red(err);
+                spinner.start();
+                spinner.fail();
+                return;
+            }
             return logr(err);
         }
 
-        log(res);
+        if( options.watch ){
+            return submission(true, options.totalRuns, true, options.delay);
+        }
+
     });
 }
 
@@ -91,18 +116,26 @@ function prepareInput(options, callback) {
     waterfall([
         (next) => {
 
+            if( options.remember ){
+                debugs(`remember me, skip reading config file`);
+                return next(null,false);
+            }
+
             debugs(`Reading config file ${options.config}`);
 
-            jsonfile.readFile(options.config, function(err, obj) {
+            jsonfile.readFile(options.config, (err, obj) => {
 
                 if( err ){
+
                     if( err.code === 'EPERM' ){
                         return next(`Permission denied config file.`);
                     }
-                    else if( err.code === 'ENOENT' ){
+
+                    if( err.code === 'ENOENT' ){
                         debugs(`Config file not found`);
                         return next(null,false); //send next step to enter manually
                     }
+
                     return next(err);
                 }
 
@@ -149,6 +182,8 @@ function prepareInput(options, callback) {
                  validate: validateEmpty
              }];
 
+            spinner.stop();
+
              //
              // Ask for handle and password
              //
@@ -185,12 +220,16 @@ function getCSRFToken(options,callback) {
     let opts = {
         headers: headers,
         method: 'GET',
-        url: options.form
+        uri: options.form,
+        timeout: TIME_OUT
     };
+
+    spinner.text = `Loading token...`;
+    spinner.start();
 
     debugs(`Loading csrf token from ${options.form}...`);
 
-    cookieRequest(opts, function(err,httpResponse,body){
+    cookieRequest(opts, (err,httpResponse,body) => {
 
         if (err) {
             return callback(err);
@@ -212,6 +251,7 @@ function getCSRFToken(options,callback) {
         // but need to keep this idea and improve!
         //
         options.form = options.nextForm;
+        spinner.succeed();
 
         return callback(null,csrf_token,options);
     });
@@ -256,12 +296,15 @@ function login(csrf_token, options, callback) {
         headers: headers,
         method: 'POST',
         form: form,
-        url: URL
+        url: URL,
+        timeout: TIME_OUT
     };
 
+    spinner.text = `Logging in...`;
+    spinner.start();
     debugs('Sending login request...');
 
-    cookieRequest(opts, function(err,httpResponse,body){
+    cookieRequest(opts, (err,httpResponse,body) => {
 
         if (err) {
             return callback(err);
@@ -277,21 +320,28 @@ function login(csrf_token, options, callback) {
         //
         if( !_.has(resHeaders,'location') || resHeaders.location !== '/' ){
             debugs($.html());
-            return callback('Submission failed.Invalid handle or password.');
+            return callback('Login failed.Invalid handle or password.');
         }
 
 
         //
         // Save credentials into config file.HASH the password first.
         //
-        let hashs = {
-            user: options.handle,
-            pass: CryptoJS.AES.encrypt(options.password, HASH_SECRET).toString()
-        };
-        debugs(`Saving credentials in config file...`);
-        jsonfile.writeFileSync(options.config, hashs); //sync?
+        if( options.remember ) {
+            let hashs = {
+                user: options.handle,
+                pass: CryptoJS.AES.encrypt(options.password, HASH_SECRET).toString()
+            };
+            debugs(`Saving credentials in config file...`);
+            jsonfile.writeFileSync(options.config, hashs); //sync?
+        }
+        else if( options.logout ){ //delete handle and password
+            debugs(`Deleting credentials from config file...`);
+            jsonfile.writeFileSync(options.config, {});
+        }
 
         debugs('Successfully logged in');
+        spinner.succeed();
 
         return callback(null,options);
     });
@@ -306,7 +356,8 @@ function login(csrf_token, options, callback) {
  */
 function submitSolution(csrf_token,options,callback) {
 
-    let URL = `http://codeforces.com/problemset/submit?csrf_token=${csrf_token}`;
+    let URL = `http://codeforces.com/contest/${options.contestId}/submit?csrf_token=${csrf_token}`;
+    //let URL = `http://codeforces.com/problemset/submit?csrf_token=${csrf_token}`;
 
     let headers = {
         "Host": "codeforces.com",
@@ -338,12 +389,15 @@ function submitSolution(csrf_token,options,callback) {
         headers: headers,
         method: 'POST',
         formData: formData,
-        url: URL
+        url: URL,
+        timeout: TIME_OUT
     };
 
-    debugs('Submitting solution...');
+    spinner.text = `Submitting solution...`;
+    spinner.start();
+    debugs(`Submitting solution ${URL}...`);
 
-    cookieRequest(opts, function(err,httpResponse,body){
+    cookieRequest(opts, (err,httpResponse,body) => {
 
         if (err) {
             return callback(err);
@@ -352,7 +406,8 @@ function submitSolution(csrf_token,options,callback) {
         var $ = cheerio.load(body, { decodeEntities: false } );
         var location = httpResponse.headers;
 
-        if( !_.has(location,'location') ){
+
+        if( !_.has(location,'location') || location['location'] !== `/contest/${options.contestId}/my` ){
 
             //
             // Codeforces provided error
@@ -362,74 +417,23 @@ function submitSolution(csrf_token,options,callback) {
                 return callback($(for__source).text());
             }
 
+            debugs(`here.`);
             debugs($.html());
+            debugs(location);
+
+           // log($.html());
 
             //something wrong!
-            return callback('Submission failed.Error.');
+            return callback('Error: Submission failed.Please check inputs.');
         }
 
         debugs('Solution submitted!');
 
+        spinner.succeed();
+        spinner.text =  chalk.bold.green(`Submitted at ${location.date}`);
+        spinner.start();
+        spinner.succeed();
+
         return callback(null,location.date);
     });
-}
-
-
-/**
- * Get submission status. Should not be in this module!
- *
- * @param submitTime
- * @param callback
- */
-function getStatus(submitTime,callback) {
-
-    var URL = "http://codeforces.com/api/user.status?handle=justoj&from=1&count=2";
-
-    var headers = {
-        "Host": "codeforces.com",
-        "Upgrade-Insecure-cookieRequests": 1,
-        "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.8"
-    };
-
-    var opts = {
-        method: 'GET',
-        url: URL,
-        headers: headers
-    };
-
-
-    cookieRequest(opts, function(err,httpResponse,body){
-
-        if (err) {
-            //log("error");
-            //log(httpResponse.code);
-            return log(err);
-        }
-
-        var submissions = JSON.parse(body);
-
-
-        log( submissions );
-        log( submitTime );
-
-        var d = _.split(submitTime, ' ', 6);
-        var tdm = d[2] + '/' + d[1] + '/' + d[3] + ' ' + d[4] + ' ' + d[5];
-
-        log( moment(tdm,'MMM/DD/YYYY kk:mm:ss zz').unix() );
-        log( moment().unix() );
-
-        return callback();
-    });
-}
-
-
-/**
- * Validator for console promt [inquirer]
- * @param inpt
- * @returns {boolean}
- */
-function validateEmpty(inpt) {
-    return inpt.length > 0;
 }

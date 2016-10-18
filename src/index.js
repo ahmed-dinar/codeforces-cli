@@ -9,6 +9,7 @@ import countrystandings from './lib/crawler/countrystandings';
 import ratings from './lib/crawler/ratings';
 import sourcecode from './lib/crawler/sourcecode';
 import submit from './lib/crawler/submit';
+import submission from './lib/api/submission';
 
 
 export default {
@@ -20,7 +21,8 @@ export default {
     countrystandings: countrystandings,
     ratings: ratings,
     sourcecode: sourcecode,
-    submit: submit
+    submit: submit,
+    submission: submission
 }
 
 
