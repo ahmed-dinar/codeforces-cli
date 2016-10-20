@@ -10,6 +10,7 @@ import ratings from './lib/crawler/ratings';
 import sourcecode from './lib/crawler/sourcecode';
 import submit from './lib/crawler/submit';
 import submission from './lib/api/submission';
+import cfdefault from './lib/utils/cfdefault';
 
 
 export default {
@@ -22,7 +23,8 @@ export default {
     ratings: ratings,
     sourcecode: sourcecode,
     submit: submit,
-    submission: submission
+    submission: submission,
+    cfdefault: cfdefault
 }
 
 

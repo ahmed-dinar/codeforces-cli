@@ -3,21 +3,18 @@
 import JSONStream from 'JSONStream';
 import debug from 'debug';
 import request from 'request';
-import ora from 'ora';
 import _ from 'lodash';
 import Table from 'cli-table2';
 import chalk from 'chalk';
 import { line } from 'cli-spinners';
+import ora from 'ora';
 import qs from 'qs';
 import { waterfall } from 'async';
-
+import { log, logr } from '../helpers';
 import tags from './tags';
 
 var debugs = debug('CF:usertags');
-var spinner = ora({
-    text: 'Loading data...',
-    spinner: line
-});
+var spinner = ora({ spinner: line });
 
 
 /**
@@ -161,11 +158,11 @@ export default (parameters = {}) => {
                         return p2 - p1;
                     });
 
-                    console.log();
-                    console.log(chalk.bold.green(` User: ${parameters.handle}`));
-                    console.log(chalk.green(` Total Submissions: ${totalSubmissions}`));
-                    console.log(chalk.green(` Total Accepted: ${totalAccepted}`));
-                    console.log(table.toString());
+                    log('');
+                    log(chalk.bold.green(` User: ${parameters.handle}`));
+                    log(chalk.green(` Total Submissions: ${totalSubmissions}`));
+                    log(chalk.green(` Total Accepted: ${totalAccepted}`));
+                    log(table.toString());
 
                     return callback();
                 })
@@ -191,7 +188,9 @@ export default (parameters = {}) => {
                 if( _.has(data,'problem') ) {
 
                     totalSubmissions++;
-                    totalAccepted += data.verdict === 'OK' ? 1 : 0;
+                    totalAccepted += data.verdict === 'OK'
+                        ? 1
+                        : 0;
 
                     let { problem } = data;
                     let prob = `${problem.contestId}${problem.index}`;
@@ -206,7 +205,10 @@ export default (parameters = {}) => {
 
                         let tagExists = _.has(myTags, tag);
                         if( !tagExists ) {
-                            myTags[tag] =  data.verdict === 'OK' ? 1 : 0;
+                            myTags[tag] =  data.verdict === 'OK'
+                                ? 1
+                                : 0;
+
                             problemTag[prob] = {};
                             let k = problemTag[prob];
                             k[tag] = true;
@@ -230,10 +232,7 @@ export default (parameters = {}) => {
     ], (err,result) => {
 
         if(err){
-            console.log(err);
-            return process.exit(1);
+            logr(err);
         }
-
-        process.exit(0);
     });
 }

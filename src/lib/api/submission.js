@@ -10,37 +10,52 @@ import request from 'request';
 import debug from 'debug';
 import chalk from 'chalk';
 import Table from 'cli-table2';
+import { line } from 'cli-spinners';
+import ora from 'ora';
 import { waterfall, whilst } from 'async';
 import verdicts from '../verdicts';
 import { log, logr, getHomeDir, validateEmpty } from '../helpers';
 
 var debugs = debug('CF:submission');
+var spinner = ora({ spinner: line });
 var GN = chalk.green;
 var GB = chalk.bold.green;
 var RB = chalk.bold.red;
 
 var TIME_OUT = 30000; //30 seconds
 var STATUS_DELAY = 5000; //4 seconds
-var TOTAL_WATCH = 10; //4 seconds
+var TOTAL_WATCH = 10; //total submission to fetch
 
 
 /**
  *
- * @param remember
- * @param count
- * @param watch
- * @param delay
+ * @param {Object} configs - {  count, remember,  contest, contestId, delay  }
  */
-export default (remember = false, count = 1, watch = false, delay = STATUS_DELAY) => {
+export default (configs = {}) => {
 
     let options = {};
-    options.config = path.resolve(`${getHomeDir()}/.cfconfig`);
-    options.count = count;
-    options.remember = remember;
-    options.watch = watch;
 
-    if( delay >= 2000 ){
-        STATUS_DELAY = delay;
+    options.config = path.resolve(`${getHomeDir()}/.cfconfig`);
+    options.count = configs.count || 1;
+
+    options.remember = _.has(configs,'remember')
+        ? configs.remember
+        : false;
+
+    options.watch = _.has(configs,'watch')
+        ? configs.watch
+        : false;
+
+    options.contest = _.has(configs,'contest')
+        ? configs.contest
+        : false;
+
+    if( configs.contest ){
+        options.contestId = configs.contestId;
+    }
+
+    if( _.has(configs,'delay') && configs.delay >= 2000 ){
+        STATUS_DELAY = configs.delay;
     }
 
     waterfall([
@@ -51,6 +66,7 @@ export default (remember = false, count = 1, watch = false, delay = STATUS_DELAY
     ],(err,res) => {
 
         if(err){
+            spinner.fail();
             return logr(err);
         }
 
@@ -59,11 +75,14 @@ export default (remember = false, count = 1, watch = false, delay = STATUS_DELAY
 
 
 /**
- *
+ * Reading config file searching saved credentials
  * @param options
  * @param next
  */
 function readConfig(options, next) {
+
+    spinner.text = `Reading config file...`;
+    spinner.start();
 
     jsonfile.readFile(options.config, (err, obj) => {
 
@@ -83,6 +102,7 @@ function readConfig(options, next) {
             askHandle = true;
         }
 
+        spinner.stop();
 
         if( askHandle || !_.has(obj,'user')  ){
 
@@ -104,6 +124,8 @@ function readConfig(options, next) {
         }
 
         debugs(`Handle found in config file`);
+        spinner.text = `Saved handle found '${obj.user}'`;
+        spinner.succeed();
 
         options.handle = obj.user;
         return next(null, options);
@@ -112,28 +134,29 @@ function readConfig(options, next) {
 
 
 /**
+ * Get submission status and exit
  *
  * @param options
  * @param next
  */
 function getSubmission(options, next) {
 
+    //go to live submssion status
     if( options.watch ){
         return watchRun(options,next);
     }
 
-    let params = qs.stringify({
-        handle: options.handle,
-        from: 1,
-        count: options.count
-    }, { encode: false });
+    let url = generateUrl(options);
+    debugs(`URL = ${url}`);
 
-    let url = `http://codeforces.com/api/user.status?${params}`;
     let reqOptions = {
         uri: url,
         json: true,
         timeout: TIME_OUT
     };
+
+    spinner.text = `Fetching submissions..`;
+    spinner.start();
 
     request
         .get(reqOptions, (error, response, body) => {
@@ -151,6 +174,7 @@ function getSubmission(options, next) {
                 return next(body.comment);
             }
 
+            spinner.succeed();
             generateTable(body.result);
 
             return next();
@@ -169,10 +193,15 @@ function watchRun(options, next) {
     let params = qs.stringify({
         handle: options.handle,
         from: 1,
-        count: options.count <= 10 ? options.count : TOTAL_WATCH
+        count: options.count <= 10
+            ? options.count
+            : TOTAL_WATCH
     }, { encode: false });
 
-    let url = `http://codeforces.com/api/user.status?${params}`;
+
+    let url = generateUrl(options);
+    debugs(url);
+
     let reqOptions = {
         uri: url,
         json: true,
@@ -186,7 +215,8 @@ function watchRun(options, next) {
         },
         (callback) => {
 
-            log(`  Refreshing...`);
+            spinner.text = `Refreshing..`;
+            spinner.start();
 
             request
                 .get(reqOptions, (error, response, body) => {
@@ -204,29 +234,29 @@ function watchRun(options, next) {
                         return callback(body.comment);
                     }
 
+                    spinner.succeed();
                     keepWatching = generateTable(body.result, true);
 
                     //
                     // Still testing, Wait x seconds and get status again
                     //
                     if( keepWatching ) {
-
-                        let tmo = setTimeout(() => {
+                        setTimeout(() => {
                             callback();
                          }, STATUS_DELAY);
-
                         return;
                     }
-
 
                     return callback();
                 });
         },
         (err, n) => {
+
             if(err){
                 debugs(`Error while watching`);
                 return next(err);
             }
+
             return next();
         }
     );
@@ -256,24 +286,32 @@ function generateTable(runs, isWatch = false){
         let passed = parseInt(passedTestCount);
         who = author.members[0].handle;
 
-        switch (verdict){
-            case 'TESTING':
-                done = false;
-                verdict = chalk.white.bold(verdicts[verdict]);
-                break;
-            case 'OK':
-                verdict = GB(verdicts[verdict]);
-                break;
-            case 'RUNTIME_ERROR':
-            case 'WRONG_ANSWER':
-            case 'PRESENTATION_ERROR':
-            case 'TIME_LIMIT_EXCEEDED':
-            case 'MEMORY_LIMIT_EXCEEDED':
-            case 'IDLENESS_LIMIT_EXCEEDED':
-                verdict = RB(`${verdicts[verdict]} on test ${passed+1}`);
-                break;
-            default:
-                verdict = RB(verdicts[verdict]);
+        debugs(run.testset);
+
+        if( verdict === undefined ){
+            done = false;
+            verdict = chalk.white.bold(`In queue`);
+        }
+        else{
+            switch (verdict){
+                case 'TESTING':
+                    done = false;
+                    verdict = chalk.white.bold(verdicts[verdict]);
+                    break;
+                case 'OK':
+                    verdict = GB(verdicts[verdict]);
+                    break;
+                case 'RUNTIME_ERROR':
+                case 'WRONG_ANSWER':
+                case 'PRESENTATION_ERROR':
+                case 'TIME_LIMIT_EXCEEDED':
+                case 'MEMORY_LIMIT_EXCEEDED':
+                case 'IDLENESS_LIMIT_EXCEEDED':
+                    verdict = RB(`${verdicts[verdict]} on test ${passed+1}`);
+                    break;
+                default:
+                    verdict = RB(verdicts[verdict]);
+            }
         }
 
         table.push([
@@ -286,6 +324,7 @@ function generateTable(runs, isWatch = false){
         ]);
     });
 
+    // in live watching mode, clear console in every refresh
     if( isWatch ){
         clear();
     }
@@ -295,4 +334,32 @@ function generateTable(runs, isWatch = false){
     log(table.toString());
 
     return !done;
+}
+
+
+/**
+ * Generate submission status url
+ *
+ * @param options
+ * @returns {string}
+ */
+function generateUrl(options) {
+
+    if( options.contest ){
+        let params = qs.stringify({
+            handle: options.handle,
+            from: 1,
+            count: options.count,
+            contestId: options.contestId
+        }, { encode: false });
+        return `http://codeforces.com/api/contest.status?${params}`;
+    }
+
+    let params = qs.stringify({
+        handle: options.handle,
+        from: 1,
+        count: options.count
+    }, { encode: false });
+
+    return `http://codeforces.com/api/user.status?${params}`;
 }

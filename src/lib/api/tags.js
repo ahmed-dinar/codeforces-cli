@@ -8,16 +8,13 @@ import _ from 'lodash';
 import Table from 'cli-table2';
 import chalk from 'chalk';
 import { line } from 'cli-spinners';
+import { log, logr } from '../helpers';
 
 var debugs = debug('CF:tags');
-var spinner = ora({
-    text: 'Loading data...',
-    spinner: line
-});
-
+var spinner = ora({ spinner: line });
 
 /**
- * Getting all tags and their count
+ * Get all tags and quantity
  *
  * @param callback
  *      if callback given, return tags, otherwise print
@@ -28,7 +25,6 @@ export default (callback) => {
         uri: `http://codeforces.com/api/problemset.problems`,
         json: true
     };
-
 
     //
     // Request validators
@@ -54,14 +50,13 @@ export default (callback) => {
                 return callback(err);
             }
 
-            console.log('Failed');
+            logr('Request Failed.Bug?');
 
-            process.exit(1);
         })
         .on('complete', () => {
 
             /**
-             *  Very messy code, need to update callback logic for clean code
+             *  Very messy code, need to update callback logic for clean code (??)
              */
 
             debugs('parsing completed');
@@ -69,38 +64,34 @@ export default (callback) => {
 
             let isCallback = typeof callback === 'function';
 
-
             if( responseCode !== 200 ){
-
                 if(isCallback){
                     return callback(`Failed, HTTP status: ${responseCode}`);
                 }
-                console.log(`Failed, HTTP status: ${responseCode}`);
-                return process.exit(1);
+                logr(`Failed, HTTP status: ${responseCode}`);
+                return;
             }
 
             //
             // Content not json, request failed
             //
             if( contentType.indexOf('application/json;') === -1 ){
-
                 if(isCallback){
                     return callback('Failed.Not valid data.');
                 }
-                console.log('Failed.Not valid data.');
-                return process.exit(1);
+                logr('Failed.Not valid data.');
+                return;
             }
 
             //
             // API reject request
             //
             if( apiFailed ){
-
                 if(isCallback){
                     return callback(apiMsg);
                 }
-                console.log(apiMsg);
-                return process.exit(1);
+                logr(apiMsg);
+                return;
             }
 
 
@@ -134,11 +125,9 @@ export default (callback) => {
                 table.push([key, value]);
             });
 
-            console.log();
-            console.log(chalk.bold.green(` Total tag: ${table.length}`));
-            console.log(table.toString());
-
-            process.exit(0);
+            log();
+            log(chalk.bold.green(` Total tag: ${table.length}`));
+            log(table.toString());
         })
         .on('response', (response) => {
 
@@ -163,7 +152,7 @@ export default (callback) => {
             // debugs('data received');
 
             //
-            // If request failed, tags nay not exists
+            // If request failed, tags may not exist
             //
             if( _.has(data,'tags') ) {
                 _.forEach(data.tags,  (tag) => {

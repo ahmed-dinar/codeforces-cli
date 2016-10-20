@@ -14,45 +14,39 @@ import jsonfile from 'jsonfile';
 import CryptoJS from 'crypto-js';
 import inquirer from 'inquirer';
 import languages from '../languages';
-import { getCWD, checkPath, log, logr, getHomeDir, validateEmpty } from '../helpers';
+import { getCWD, checkPath, log, logr, getHomeDir, validateEmpty, commonHeaders } from '../helpers';
 import submission from '../api/submission'
 
+
 //
-// Should not be here.
+// HASH_SECRET Should not be here.
 //
 var HASH_SECRET = 'thisisverysecret';
+
 var cookieJar = request.jar();
 var cookieRequest = request.defaults({ jar: cookieJar });
 var debugs = debug('CF:submit');
-var spinner = ora({
-    text: 'Loading data...',
-    spinner: line
-});
+var spinner = ora({ spinner: line });
 var TIME_OUT = 30000;
 
 
 /**
  *
- * @param Object options - {  contestId, problemIndex, codeFile }
+ * @param {Object} options - {  contestId, problemIndex, codeFile }
  *
  */
 export default (options = {}) => {
 
-    log('');
-
     let isMissing = !_.has(options,'codeFile') || !_.has(options,'contestId') || !_.has(options,'problemIndex');
     if( isMissing ){
-        logr(`Missing credentials.`);
-        return;
+        throw new Error(`codeFile, contestId and problemIndex required`);
     }
-
 
     options.codePath = getCWD(options.codeFile);
     options.form = "http://codeforces.com/enter";   //login url
     options.nextForm = "http://codeforces.com/problemset/submit";
 
-    spinner.text = `Starting process...`;
-    spinner.start();
+    log('');
 
     waterfall([
         (callback) => {
@@ -68,18 +62,32 @@ export default (options = {}) => {
     ], (err,res) => {
 
         if(err){
+
             spinner.fail();
+
             if( typeof err === 'string' ){
                 spinner.text = chalk.bold.red(err);
                 spinner.start();
                 spinner.fail();
                 return;
             }
-            return logr(err);
+
+            logr(err);
+            return;
         }
 
         if( options.watch ){
-            return submission(true, options.totalRuns, true, options.delay);
+
+            let subOptions = {
+                remember: false,
+                count: options.totalRuns,
+                watch: true,
+                delay: options.delay,
+                contest: true,
+                contestId: options.contestId
+            };
+
+            return submission(subOptions);
         }
 
     });
@@ -87,31 +95,35 @@ export default (options = {}) => {
 
 
 /**
- * Check config if credentials previously saved
- * If not ask handle and password from user console input
+ * Check config file for credentials if previously saved
+ * If not found, ask handle and password from user console input
  *
- * @param {Object} options
+ * @param {Object} options - {  contestId, problemIndex, codeFile, codePath, form, nextForm  }
  * @param callback
  * @returns {*}
  */
 function prepareInput(options, callback) {
 
-    let lang = path.extname(options.codeFile).split('.').pop();
-    let { extensions } = languages;
+    if( _.has(options,'language') ){
+        let { typeId } = languages;
+        let tid = options.language;
 
+        if( !_.has(typeId, tid) ){
+            return callback(`  Error: Invalid language id '${tid}', Please type 'cf lang' to see supported language list`);
+        }
+    }
+    else {
+        let lang = path.extname(options.codeFile).split('.').pop();
+        let { extensions } = languages;
 
-    /************** TO-DO *******************/
-    //
-    // The given file extension not found in default config file supported languages by Codeforces
-    // Need to update and add show list of languages to select manually
-    //
-    if( !_.has(extensions,lang) ){
-        return callback(`Invalid language extension ".${lang}"`);
+        if ( !_.has(extensions, lang) ) {
+            return callback(`  Error: Invalid language extension .${lang}, Please type 'cf lang' to see supported language list`);
+        }
+
+        options.language = extensions[lang];
     }
 
-    options.language = extensions[lang];
     options.config = path.resolve(`${getHomeDir()}/.cfconfig`);
-
 
     waterfall([
         (next) => {
@@ -122,6 +134,8 @@ function prepareInput(options, callback) {
             }
 
             debugs(`Reading config file ${options.config}`);
+            spinner.text = `Reading config file...`;
+            spinner.start();
 
             jsonfile.readFile(options.config, (err, obj) => {
 
@@ -139,6 +153,7 @@ function prepareInput(options, callback) {
                     return next(err);
                 }
 
+                spinner.stop();
                 debugs(`Config file found`);
 
                 //
@@ -154,6 +169,9 @@ function prepareInput(options, callback) {
                 debugs('creadentials found!');
                 debugs(obj.pass);
                 debugs(`decrypt pass: ${options.password}`);
+
+                spinner.text = `Saved handle found '${obj.user}'`;
+                spinner.succeed();
 
                 return next(null,true);
             });
@@ -206,20 +224,10 @@ function prepareInput(options, callback) {
  */
 function getCSRFToken(options,callback) {
 
-    //
-    // Headers are too much? need find better idea/practice
-    //
-    let headers = {
-        "Host": "codeforces.com",
-        "Upgrade-Insecure-cookieRequests": 1,
-        "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.8"
-    };
+    let headers = commonHeaders();
 
     let opts = {
         headers: headers,
-        method: 'GET',
         uri: options.form,
         timeout: TIME_OUT
     };
@@ -229,7 +237,7 @@ function getCSRFToken(options,callback) {
 
     debugs(`Loading csrf token from ${options.form}...`);
 
-    cookieRequest(opts, (err,httpResponse,body) => {
+    cookieRequest.get(opts, (err,httpResponse,body) => {
 
         if (err) {
             return callback(err);
@@ -269,16 +277,10 @@ function login(csrf_token, options, callback) {
 
     let URL = "http://codeforces.com/enter";
 
-    let headers = {
-        "Host": "codeforces.com",
-        "Origin": "http://codeforces.com",
-        "Referer": "http://codeforces.com/enter",
-        "Upgrade-Insecure-cookieRequests": 1,
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.8"
-    };
+    let headers = commonHeaders();
+    headers['Origin'] = "http://codeforces.com";
+    headers['Referer'] = "http://codeforces.com/enter";
+    headers['Content-Type'] = "application/x-www-form-urlencoded";
 
 
     //
@@ -291,10 +293,8 @@ function login(csrf_token, options, callback) {
         password: options.password
     };
 
-
     let opts = {
         headers: headers,
-        method: 'POST',
         form: form,
         url: URL,
         timeout: TIME_OUT
@@ -304,7 +304,7 @@ function login(csrf_token, options, callback) {
     spinner.start();
     debugs('Sending login request...');
 
-    cookieRequest(opts, (err,httpResponse,body) => {
+    cookieRequest.post(opts, (err,httpResponse,body) => {
 
         if (err) {
             return callback(err);
@@ -314,7 +314,10 @@ function login(csrf_token, options, callback) {
         var resHeaders = httpResponse.headers;
 
 
+
+        /************************************/
         /***********  TO-DO *****************/
+        /*********** ************************/
         //
         //  May be some other reason exists, (i,e codeforces unavaiable). Need to update.
         //
@@ -349,6 +352,11 @@ function login(csrf_token, options, callback) {
 
 
 /**
+ * *************** TO-DO ***********************
+ *   GYM contest not working
+ * **********************************************
+ *
+ *
  * Sumbit code codeforces.com
  * @param {String} csrf_token - submit form token
  * @param {Object} options
@@ -357,18 +365,11 @@ function login(csrf_token, options, callback) {
 function submitSolution(csrf_token,options,callback) {
 
     let URL = `http://codeforces.com/contest/${options.contestId}/submit?csrf_token=${csrf_token}`;
-    //let URL = `http://codeforces.com/problemset/submit?csrf_token=${csrf_token}`;
 
-    let headers = {
-        "Host": "codeforces.com",
-        "Origin": "http://codeforces.com",
-        "Referer": "http://codeforces.com/problemset/submit",
-        "Upgrade-Insecure-cookieRequests": 1,
-        "Content-Type": "multipart/form-data; boundary=----WebKitFormBoundaryv9DeqLHW1rFHNpiY",
-        "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.116 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.8"
-    };
+    let headers = commonHeaders();
+    headers['Origin'] = "http://codeforces.com";
+    headers['Referer'] = "http://codeforces.com/problemset/submit";
+    headers['Content-Type'] = "multipart/form-data; boundary=----WebKitFormBoundaryv9DeqLHW1rFHNpiY";
 
 
     //
@@ -387,7 +388,6 @@ function submitSolution(csrf_token,options,callback) {
 
     let opts = {
         headers: headers,
-        method: 'POST',
         formData: formData,
         url: URL,
         timeout: TIME_OUT
@@ -397,7 +397,7 @@ function submitSolution(csrf_token,options,callback) {
     spinner.start();
     debugs(`Submitting solution ${URL}...`);
 
-    cookieRequest(opts, (err,httpResponse,body) => {
+    cookieRequest.post(opts, (err,httpResponse,body) => {
 
         if (err) {
             return callback(err);

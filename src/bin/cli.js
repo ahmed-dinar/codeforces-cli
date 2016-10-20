@@ -3,13 +3,14 @@
 
 var program = require('commander');
 import path from 'path';
-import { has } from 'lodash';
+import { has, forEach } from 'lodash';
 import chalk from 'chalk';
 import { version } from '../../package.json';
 import * as Codeforces from '../..';
-import { log } from '../lib/helpers';
+import { log, logr } from '../lib/helpers';
 
 var DEFAULT_DELAY = 5000;
+var DEFAULT_ASYNC_LIMIT = 10;
 
 
 /**
@@ -24,6 +25,7 @@ function list(val){
 
 program
     .version(version)
+    .option('-r, --remember', 'save handle for future')
     .usage('cf [program] [options]');
 
 
@@ -33,18 +35,31 @@ program
     .option('-c, --count <total>', 'total submission status to display')
     .option('-w, --watch', 'watch submission status live')
     .option('--delay <delay>', 'refreshing delay of live submission status [in millisecond]')
+    .option('--contest <contestId>', 'specific contest submissions')
     .description('user submission status')
     .action( (prg) => {
-        let remember = has(prg,'remember');
-        let total = has(prg,'count') ? parseInt(prg.count) : 1;
-        let watch = has(prg,'watch');
-        let delay = has(prg,'delay') ? parseInt(prg.delay) : DEFAULT_DELAY;
-        Codeforces.submission(remember, total, watch, delay);
+
+        let options = {
+            remember: has(prg,'remember'),
+            watch: has(prg,'watch'),
+            contest: has(prg,'contest'),
+            count: has(prg,'count')
+                ? parseInt(prg.count)
+                : 1,
+            delay: has(prg,'delay')
+                ? parseInt(prg.delay) : DEFAULT_DELAY,
+            contestId: has(prg,'contest')
+                ? prg.contest
+                : 0
+        };
+
+        Codeforces.submission(options);
     });
 
 
 program
     .command('submit <contest-id> <problem-no> <solution-file>')
+    .option('--lang <language>', 'programming language id of the solution')
     .option('-r, --remember', 'save/update password for future login')
     .option('-l, --logout', 'delete saved password')
     .option('-w, --watch', 'watch submission status live')
@@ -58,12 +73,17 @@ program
 
         if( remember && logout ){
             log('');
-            log( chalk.bold.red(`  Error: Please select either remember or logout`) );
+            logr(`  Error: Please select either remember or logout`);
             return;
         }
 
-        let total = has(prg,'count') ? parseInt(prg.count) : 1;
-        let delay = has(prg,'delay') ? parseInt(prg.delay) : DEFAULT_DELAY;
+        let total = has(prg,'count')
+            ? parseInt(prg.count)
+            : 1;
+
+        let delay = has(prg,'delay')
+            ? parseInt(prg.delay)
+            : DEFAULT_DELAY;
 
         let options = {
             contestId: cid,
@@ -76,9 +96,12 @@ program
             watch: has(prg,'watch')
         };
 
+        if( has(prg,'lang') ){
+            options.language = prg.lang;
+        }
+
         Codeforces.submit(options);
     });
-
 
 
 program
@@ -89,15 +112,12 @@ program
     });
 
 
-
-
-
-
 program
     .command('rating')
     .option('-u, --user <handle>', 'user handle for rating')
     .option('--country <country-name>', 'country name for rating')
-    .option('--no-chart', 'disable showing chart')
+    .option('--no-chart', 'disable showing chart for user')
+    .option('--org', 'show Organization for country rating')
     .description('User ratings')
     .action( (prg) => {
 
@@ -107,8 +127,10 @@ program
         }
 
         if( has(prg,'country') ){
-            console.log(prg.country);
-            return;
+            return Codeforces.ratings({
+                country: prg.country,
+                org: has(prg,'org')
+            });
         }
 
         program.outputHelp();
@@ -122,6 +144,27 @@ program
         Codeforces.tags();
     });
 
+program
+    .command('lang')
+    .description('All supported languages and typeId')
+    .action( () => {
+        Codeforces.cfdefault.langs();
+    });
+
+program
+    .command('ext')
+    .description('All supported extensions and language name')
+    .action( () => {
+        Codeforces.cfdefault.exts();
+    });
+
+
+program
+    .command('country')
+    .description('All supported country')
+    .action( () => {
+        Codeforces.cfdefault.countrs();
+    });
 
 program
     .command('contests')
@@ -130,7 +173,7 @@ program
     .description('Contest lists')
     .action( (prg) => {
 
-        console.log('Wait for contest list');
+        console.log('Not available yet.');
 
         if( has(prg,'running') ){
             console.log('Also running');
@@ -142,27 +185,72 @@ program
 
 
 program
-    .command('info <handle>')
+    .command('info <handles>')
     .description('User info')
-    .action( (handle) => {
-
-        console.log(handle);
+    .action( (handles) => {
+        Codeforces.userinfo(handles);
     });
+
 
 program
     .command('solutions <handle>')
     .option('-d, --directory <directory>','directory to save solutions')
     .option('-p, --problem','also download problem statement')
-    .description('User info')
+    .option('--limit <async-limit>','limit async task')
+    .description('user solution download')
     .action( (handle,prg) => {
 
         let options = {
             handle: handle,
             withProblem: has(prg,'problem'),
-            dir: has(prg,'dir') ? prg.dir : '.'
+            dir: has(prg,'directory')
+                ? prg.directory
+                : '.',
+            limit: has(prg,'limit')
+                ? parseInt(prg.limit)
+                : DEFAULT_ASYNC_LIMIT
         };
 
         Codeforces.sourcecode(options);
+    });
+
+
+program
+    .command('standings <contestId>')
+    .description('contest standings')
+    .option('--handles <handles>', 'handles for standings')
+    .option('--country <country-name>', 'country name for standings')
+    .option('-c, --count <total>', 'total standings to display')
+    .option('--offset <offset>', 'standings offset')
+    .option('--unofficial', 'unofficial standings')
+    .action( (contestId,prg) => {
+
+        if( has(prg,'country') ){
+            return Codeforces.countrystandings({
+                contestId: contestId,
+                country: prg.country,
+                count: has(prg,'count')
+                    ? prg.count
+                    : 50
+            });
+        }
+
+        let options = {
+            contestId: contestId,
+            unofficial: has(prg,'unofficial'),
+            count: has(prg,'count')
+                ? parseInt(prg.count)
+                : 200,
+            from: has(prg,'offset')
+                ? parseInt(prg.offset)
+                : 1
+        };
+
+        if( has(prg,'handles') ){
+            options.handles = prg.handles;
+        }
+
+        Codeforces.standings(options);
     });
 
 
@@ -176,7 +264,6 @@ program.parse(process.argv);
 //
 if (!program.args.length) {
     program.parse([process.argv[0], process.argv[1], '-h']);
-    process.exit(0);
 } else {
 
     //warn aboud invalid programs

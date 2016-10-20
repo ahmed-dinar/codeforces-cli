@@ -10,3 +10,4 @@ coverage
 .git
 gulpfile.js
 debug
+examples

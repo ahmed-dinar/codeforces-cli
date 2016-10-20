@@ -46,7 +46,7 @@ export default {
     extensions: {
         "c": "10",
         "cpp": "1",
-        "cc": "1",
+        "cc": "50",
         "java": "36",
         "py": "31",
         "cs": "29",
@@ -62,7 +62,7 @@ export default {
         "scala": "20",
         "sc": "20"
     },
-    getExtension (language="text") {
+    getExtension (language = "text") {
 
         if( language.toLowerCase().indexOf('c++') !== -1 || language.toLowerCase().indexOf('g++') !== -1 ){
             return 'cpp';
@@ -100,6 +100,6 @@ export default {
         if( language.toLowerCase().indexOf('haskell') !== -1 ){
             return 'hs';
         }
-        return 'text';
+        return language;
     }
 }

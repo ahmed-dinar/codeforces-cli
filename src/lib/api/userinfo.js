@@ -6,42 +6,72 @@ import Table from 'cli-table2';
 import chalk from 'chalk';
 import _ from 'lodash';
 import qs from 'qs';
+import { line } from 'cli-spinners';
+import ora from 'ora';
+import { log, logr } from '../helpers';
 
 var debugs = debug('CF:userinfo');
+var spinner = ora({ spinner: line });
 var GB = chalk.bold.green;
 
+
+/**
+ *
+ * @param handles
+ */
 export default (handles) => {
+
+
+    let invalidHandle = !_.isArray(handles) && typeof handles !== 'string';
+    if( invalidHandle ){
+        throw new Error(`handles must be array or string`);
+    }
 
     let reqOptions = {
         uri: "",
         json: true
     };
 
-    let handlesString = _.join(handles,';');
+    let handlesString = handles;
+    if( _.isArray(handles) ){
+        handlesString = _.join(handles,';');
+    }
+    else if( handles.indexOf(',') !== -1 ){
+        handlesString = _.split(handles,',');
+        handlesString = _.join(handlesString,';');
+    }
+
     let qsf = qs.stringify({ handles: handlesString }, { encode: false });
     reqOptions.uri = `http://codeforces.com/api/user.info?${qsf}`;
 
     debugs(`Fetching user data...`);
+    spinner.text = `fetching user info...`;
+    spinner.start();
 
     request
         .get(reqOptions, (error, response, body) => {
 
             if(error){
-                console.log(error);
-                process.exit(1);
+                spinner.fail();
+                logr(error);
+                return;
             }
 
             let { statusCode } = response;
 
-            if( statusCode!==200 ){
-                console.log(body.comment || 'HTTP error');
-                process.exit(1);
+            if( statusCode !== 200 ){
+                spinner.fail();
+                logr(body.comment || '  HTTP error');
+                return;
             }
 
             if( body.status !== 'OK' ){
-                console.log(body.comment);
-                process.exit(1);
+                spinner.fail();
+                logr(`  ${body.comment}`);
+                return;
             }
+
+            spinner.succeed();
 
             let table = new Table({
                 head: [ GB(`Name`), GB(`Handle`), GB(`Rank`), GB(`Rating`), GB(`Max`), GB(`Contrib.`), GB(`Country`), GB(`Organization`)  ]
@@ -67,9 +97,7 @@ export default (handles) => {
                 table.push(info);
             });
 
-            console.log();
-            console.log(table.toString());
-
-            process.exit(0);
+            log('');
+            log(table.toString());
         });
 }

@@ -7,34 +7,35 @@ import Table from 'cli-table2';
 import chalk from 'chalk';
 import _ from 'lodash';
 import qs from 'qs';
+import { line } from 'cli-spinners';
+import ora from 'ora';
+import { log, logr, commonHeaders } from '../helpers';
 
 var debugs = debug('CF:standings:c');
+var spinner = ora({ spinner: line });
 var GB = chalk.bold.green;
 var CB = chalk.bold.cyan;
 var RB = chalk.bold.red;
 
-
+/**
+ *
+ * @param {Object} options - { country, org,  }
+ */
 export default (options) => {
 
     if( !_.has(options,'country') ){
-        console.log("country parameters required");
-        process.exit(1);
+        logr(`  country required`);
+        return;
     }
 
     let { country } = options;
     let withOrg = false;
 
-    if( _.has(options,'withOrg') && options.withOrg ){
+    if( _.has(options,'org') && options.org ){
         withOrg = true;
     }
 
-    let headers = {
-        "Host": "codeforces.com",
-        "Upgrade-Insecure-Requests": 1,
-        "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.8"
-    };
+    let headers = commonHeaders();
 
     let reqOptions = {
         uri: `http://codeforces.com/ratings/country/${country}`,
@@ -42,20 +43,26 @@ export default (options) => {
     };
 
     debugs(`Fetching ratings of ${country}...`);
+    spinner.text = `fetching top 200 user ratings of ${country}...`;
+    spinner.start();
 
     request.get(reqOptions, (err, response, body) => {
 
         if(err){
-            console.log(err);
-            process.exit(1);
+            spinner.fail();
+            logr(err);
+            return;
         }
 
         let { statusCode } = response;
 
         if( statusCode!==200 ){
-            console.log('HTTP error');
-            process.exit(1);
+            spinner.fail();
+            logr('  HTTP error');
+            return;
         }
+
+        spinner.succeed();
 
         var $ = cheerio.load(body, {decodeEntities: true});
         let ratings = $('div.ratingsDatatable tr');
@@ -65,12 +72,15 @@ export default (options) => {
         });
 
         _.forEach(ratings, (rating, key) => {
-                if(key === 0){ return; }
+
+                if(key === 0){ return; } //skip table header
 
                 rating = $(rating).children();
                 let info = [ (key).toString() ];
+
                 _.forEach(rating, function (data, indx) {
-                    let inf =  _.replace( $(data).text(), /\s\s+/g , '' );
+
+                    let inf =  _.replace( $(data).text(), /\s\s+/g , '' ); //remove spaces and \n\r
                     let title = '';
 
                     if( indx === 1 ){
@@ -93,6 +103,7 @@ export default (options) => {
                     else {
                         info.push(inf);
                     }
+
                 });
                 table.push(info);
         });
@@ -101,18 +112,17 @@ export default (options) => {
             return getOrg(table, country);
         }
 
-        console.log();
-        console.log(CB(`Country: ${country}`));
-        console.log(table.toString());
-
-        process.exit(0);
+        log('');
+        log(CB(`Country: ${country}`));
+        log(table.toString());
     });
 }
 
 
 /**
- *
+ * Get users organization
  * @param table
+ * @param country
  */
 function getOrg(table, country) {
 
@@ -128,27 +138,34 @@ function getOrg(table, country) {
     let qsf = qs.stringify({ handles: handles }, { encode: false });
     rOptions.uri = `http://codeforces.com/api/user.info?${qsf}`;
 
-    debugs(`Fetching user data...`);
+    debugs(`fetching user's Organization...`);
+    spinner.text = `fetching user's Organization...`;
+    spinner.start();
 
     request
         .get(rOptions, (error, response, body) => {
 
             if(error){
-                console.log(error);
-                process.exit(1);
+                spinner.fail();
+                logr(error);
+                return;
             }
 
             let { statusCode } = response;
 
             if( statusCode!==200 ){
-                console.log('HTTP error');
-                process.exit(1);
+                spinner.fail();
+                logr('  HTTP error');
+                return;
             }
 
             if( body.status !== 'OK' ){
-                console.log(body.comment);
-                process.exit(1);
+                spinner.fail();
+                logr(`  ${body.comment}`);
+                return;
             }
+
+            spinner.succeed();
 
             _.forEach(body.result, (data,key) => {
                // table[key].push(`${data.firstName} ${data.lastName}`);
@@ -159,10 +176,8 @@ function getOrg(table, country) {
 
             table.options.head.push(GB(`Organization`));
 
-            console.log();
-            console.log(CB(`Country: ${country}`));
-            console.log(table.toString());
-
-            process.exit(0);
+            log('');
+            log(CB(`Country: ${country}`));
+            log(table.toString());
         });
 }

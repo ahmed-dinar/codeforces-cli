@@ -7,8 +7,17 @@ import JSONStream from 'JSONStream';
 import Table from 'cli-table2';
 import chalk from 'chalk';
 import _ from 'lodash';
+import { line } from 'cli-spinners';
+import ora from 'ora';
+import moment from 'moment';
+import { log, logr } from '../helpers';
 
 var debugs = debug('CF:standings');
+var spinner = ora({ spinner: line });
+var GB = chalk.green.bold;
+var CB = chalk.cyan.bold;
+var RB = chalk.red.bold;
+
 
 /**
  *
@@ -24,6 +33,9 @@ export default (options) => {
     let contentType = '';
     let standings = [];
     let table = new Table();
+    let contestInfo = {};
+    let problemSet = [];
+
 
     let reqOptions = {
         uri: url,
@@ -32,6 +44,8 @@ export default (options) => {
     };
 
     debugs(`Fetching standings..`);
+    spinner.text = `Fetching standings..`;
+    spinner.start();
 
     let strmm = request
         .get(reqOptions)
@@ -40,37 +54,45 @@ export default (options) => {
             debugs(`Failed: Request error`);
             debugs(err);
 
-            console.log(err);
-            process.exit(1);
+            logr(err);
+
         })
         .on('complete', () => {
 
             debugs('parsing completed');
 
             if( responseCode !== 200 ){
+                spinner.fail();
                 if( apiMsg !== null ){
-                    return console.log(apiMsg);
+                    return logr(apiMsg);
                 }
-                return console.log('Failed HTTP');
+                return logr('Failed HTTP');
             }
 
             if( contentType.indexOf('application/json;') === -1 ){
-                return console.log('Failed.Not valid data.');
+                spinner.fail();
+                return logr('Failed.Not valid data.');
             }
 
             if( apiFailed ){
-                return console.log(apiMsg);
+                spinner.fail();
+                return logr(apiMsg);
             }
 
-            let problemName = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-            let head = [ chalk.bold.green('Rank'), chalk.bold.green('Who'), chalk.bold.green('Points') ];
-            head = head.concat( _.slice(problemName,0,standings[0].length-3).map( x => { return chalk.bold.green(x); }) );
+            spinner.succeed();
+
+            let head = [ GB('Rank'), GB('Who'), GB('Points'), GB(`Hacks`) ];
+            _.forEach(problemSet, prb => {
+                head.push( GB(prb.index) );
+            });
             table.options.head = head;
 
-            console.log();
-            console.log(chalk.bold.cyan(` Contest: ${options.contestId}`));
-            console.log(table.toString());
-            process.exit(0);
+            log('');
+            log( CB(` Title: ${contestInfo.name}`) );
+            log( CB(` Type : ${contestInfo.type}`) );
+            log( CB(` Phase: ${contestInfo.phase}`) );
+            log(table.toString());
+
         })
         .on('response', (response) => {
 
@@ -88,18 +110,47 @@ export default (options) => {
             if( data.status !== 'OK' ){
                 apiFailed = true;
                 apiMsg = data.comment;
+                return;
             }
+
+            contestInfo = data.contest;
+            problemSet = data.problems;
 
         }).on('data', (data) => {
 
+            let hacks = '';
+
+            if( data.successfulHackCount > 0 ){
+                hacks = `+${data.successfulHackCount.toString()}`;
+            }
+
+            if( data.unsuccessfulHackCount > 0 ){
+                hacks = `${hacks} : -${data.unsuccessfulHackCount.toString()}`;
+            }
+
             let chunk = [
                 data.rank.toString(),
-                data.party.members[0].handle,
-                data.points.toString()
+                CB(data.party.members[0].handle),
+                data.points.toString(),
+                hacks
             ];
 
+
             let results = _.map(data.problemResults, (result) => {
-               return result.points.toString();
+
+                if( result.points === 0 && result.rejectedAttemptCount > 0 ){
+                    return RB(`-${result.rejectedAttemptCount.toString()}`);
+                }
+                else if( result.points === 0 && result.rejectedAttemptCount === 0 ){
+                    return ``;
+                }
+
+                let subSecond = moment.duration(result.bestSubmissionTimeSeconds, 'seconds');
+                let h = parseInt(subSecond.hours());
+                let s = parseInt(subSecond.minutes());
+                let subTime = `${Math.floor(h/10)}${h%10}:${Math.floor(s/10)}${s%10}`;
+
+                return ` ${result.points.toString()}\n${subTime}`;
             });
 
             standings.push(chunk.concat(results));
@@ -115,27 +166,34 @@ export default (options) => {
 function generateUrl(options) {
 
     if( !_.has(options,'contestId')  ){
-        console.log('Error: Contest id required.');
-        process.exit(1);
+        throw new Error('Error: Contest id required.');
     }
 
     let param = {
-        count: 50
+        contestId: options.contestId,
+        count: 200
     };
-    param.contestId = options.contestId;
-    param.from = _.has(options,'from') ? options.from : 1;
-    if( _.has(options,'count') ){
-        param.count = options.count < 201 ? options.count : 200;
-    }
-    else{
 
+    param.from = _.has(options,'from')
+        ? options.from
+        : 1;
+
+    if( _.has(options,'count') &&  options.count <= 200 ){
+        param.count = options.count;
     }
 
-    param.showUnofficial = _.has(options,'showUnofficial') ? options.showUnofficial : false;
+    param.showUnofficial = _.has(options,'unofficial')
+        ? options.unofficial
+        : false;
 
     if( _.has(options,'handles') ){
+
         let handles = options.handles;
         if( _.isArray(handles) ){
+            handles = _.join(handles,';');
+        }
+        else if( handles.indexOf(',') !== -1 ){
+            handles = _.split(handles,',');
             handles = _.join(handles,';');
         }
         param.handles = handles;

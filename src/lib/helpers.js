@@ -94,3 +94,20 @@ export function getCWD(fileName) {
 export function validateEmpty(inpt) {
     return inpt.length > 0;
 }
+
+
+
+/**
+ * Common headers for crawler
+ *
+ * @returns {{Host: string, Upgrade-Insecure-Requests: number, User-Agent: string, Accept: string, Accept-Language: string}}
+ */
+export function commonHeaders() {
+    return {
+        "Host": "codeforces.com",
+        "Upgrade-Insecure-Requests": 1,
+        "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.8"
+    };
+}

@@ -11,12 +11,10 @@ import qs from 'qs';
 import * as contrib from 'blessed-contrib';
 import blessed from 'blessed';
 import striptags from 'striptags';
+import { log, logr } from '../helpers';
 
 var debugs = debug('CF:userrating');
-var spinner = ora({
-    text: 'Loading data...',
-    spinner: line
-});
+var spinner = ora({ spinner: line });
 
 
 /**
@@ -47,7 +45,6 @@ export default (handle = '', noChart = false) => {
     let responseCode = '404';
     let contentType = '';
 
-
     //
     // default chart view, only need newRating data
     //
@@ -61,7 +58,7 @@ export default (handle = '', noChart = false) => {
 
     //
     // No chart,Get all result and make a table.
-    // using already declared 'axisX' variable
+    // using existing'axisX' variable
     //
     if( noChart ){
         jStream = JSONStream.parse('result.*');
@@ -77,7 +74,7 @@ export default (handle = '', noChart = false) => {
         });
     }
 
-    spinner.text = "Loading rating...";
+    spinner.text = "Fetching rating...";
     spinner.start();
 
     request
@@ -87,9 +84,8 @@ export default (handle = '', noChart = false) => {
             debugs(`Failed: Request error`);
             debugs(err);
 
-            console.log('Failed [Request]');
+            logr('Failed [Request]');
 
-            process.exit(1);
         })
         .on('complete', () => {
 
@@ -97,42 +93,37 @@ export default (handle = '', noChart = false) => {
 
             if( responseCode !== 200 ){
                 spinner.fail();
-                console.log('Failed.');
-                return process.exit(1);
+                logr('Failed.');
+                return;
             }
 
             if( contentType.indexOf('application/json') === -1 ){
                 spinner.fail();
-                console.log('Failed.Not valid data.');
-                return process.exit(1);
+                logr('Failed.Not valid data.');
+                return;
             }
 
             if( apiFailed ){
                 spinner.fail();
-                console.log(apiMsg);
-                return process.exit(1);
+                logr(apiMsg);
+                return;
             }
 
             spinner.succeed();
+
+            log('');
+            log(chalk.bold.green(` User: ${handle}`));
+            log(chalk.bold.green(` Total contest: ${axisX.length}`));
 
             //
             // Show table
             //
             if (noChart) {
-
-                console.log();
-                console.log(chalk.bold.green(` User: ${handle}`));
-                console.log(chalk.bold.green(` Total contest: ${axisX.length}`));
-                console.log(axisX.toString());
-
-                process.exit(0);
+                log(axisX.toString());
+                return;
             }
 
-            //
-            // Show fancy chart
-            //
             showLineChart(axisX,axisY);
-
         })
         .on('response', (response) => {
 

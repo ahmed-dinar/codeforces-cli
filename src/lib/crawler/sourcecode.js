@@ -9,28 +9,20 @@ import mkdirp from 'mkdirp';
 import JSONStream from 'JSONStream';
 import chalk from 'chalk';
 import _ from 'lodash';
+import { line } from 'cli-spinners';
+import ora from 'ora';
 import languages from '../languages';
-import { checkPath } from '../helpers';
 import { waterfall, each, eachLimit, parallel } from 'async';
+import { log, logr, checkPath, commonHeaders } from '../helpers';
+
 
 var debugs = debug('CF:sourcecode');
+var spinner = ora({ spinner: line });
+var GB = chalk.green.bold;
 
-var headers = {
-    "Host": "codeforces.com",
-    "Upgrade-Insecure-Requests": 1,
-    "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    "Referer": "",
-    "Accept-Language": "en-US,en;q=0.8"
-};
 
-var problemHeaders = {
-    "Host": "codeforces.com",
-    "Upgrade-Insecure-Requests": 1,
-    "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.8"
-};
+var headers = commonHeaders();
+var problemHeaders = commonHeaders();
 
 
 /**
@@ -43,8 +35,15 @@ export default (options, callback) => {
     var hrstart = process.hrtime();
 
     headers['Referer'] = `http://codeforces.com/submissions/${options.handle}`;
-    let LIMIT = 20;
+
+    let LIMIT = 10;
     let totalSubmissions = 0;
+
+    if( _.has(options,'limit') && options.limit > 0 ){
+        LIMIT = options.limit;
+    }
+
+    debugs(`Async limit: ${LIMIT}`);
 
     waterfall([
         (cb) => {
@@ -65,14 +64,20 @@ export default (options, callback) => {
             eachLimit(submissions, LIMIT, getOnlySource.bind(null, dir), cb);
         }
     ], (err,res) => {
+
+        if( err ){
+            spinner.fail();
+            logr(err);
+            return;
+        }
+
         let hrend = process.hrtime(hrstart);
-        console.log(` Total ${totalSubmissions} submissions saved`);
-        console.log(" Execution time: %ds %dms", hrend[0], hrend[1] / 1000000);
+        log(`  Total ${totalSubmissions} submissions saved`);
+        log(`  Execution time: ${hrend[0]}s ${hrend[1] / 1000000}ms`);
 
         if( typeof callback === 'function' ){
             return callback(err,res);
         }
-
 
     });
 }
@@ -103,11 +108,14 @@ function createOutputDir(options,callback) {
             }
 
             debugs(`creating directory ${dir}....`);
+            spinner.text = `creating directory ${dir}....`;
+            spinner.start();
 
             return mkdirp(dir, (err) => {
                 if(err){
                     return cb(err);
                 }
+                spinner.succeed();
                 return cb(null,dir);
             });
         }
@@ -118,10 +126,10 @@ function createOutputDir(options,callback) {
 /**
  *
  * @param dir
- * @param handle
+ * @param options
  * @param callback
  */
-function getSubmissions(dir, options,callback) {
+function getSubmissions(dir, options, callback) {
 
     let { handle , withProblem } = options;
     let url = `http://codeforces.com/api/user.status?handle=${handle}`;
@@ -140,6 +148,8 @@ function getSubmissions(dir, options,callback) {
     };
 
     debugs(`Fetching submissions..`);
+    spinner.text = `fetching submissions..`;
+    spinner.start();
 
     let strmm = request
         .get(reqOptions)
@@ -168,6 +178,10 @@ function getSubmissions(dir, options,callback) {
             if( apiFailed ){
                 return callback(apiMsg);
             }
+
+            spinner.stop();
+            spinner.text = `total accepted submission: ${acSubmissions.length}`;
+            spinner.succeed();
 
             debugs(`Total accepted submission: ${acSubmissions.length}`);
 
@@ -198,7 +212,9 @@ function getSubmissions(dir, options,callback) {
                 let { problem, id , contestId, programmingLanguage } = data;
                 let { index } = problem;
                 let problemId = `${contestId}${index}`;
-                let root = contestId > 10000 ? 'gym' : 'contest'; //currently gym not working. need authorization
+                let root = contestId > 10000
+                    ? 'gym'
+                    : 'contest'; //currently gym not working. need authorization
                 let submissionUrl = `http://codeforces.com/${root}/${contestId}/submission/${id}`;
                 let problemUrl = `http://codeforces.com/${root}/${contestId}/problem/${index}`;
 
@@ -208,7 +224,9 @@ function getSubmissions(dir, options,callback) {
                     problemIndex: index,
                     problemId: problemId,
                     submissionUrl: submissionUrl,
-                    problemUrl: withProblem ? problemUrl : null,
+                    problemUrl: withProblem
+                        ? problemUrl
+                        : null,
                     language: programmingLanguage
                 });
             }
@@ -229,12 +247,18 @@ function getResource(dir, submission, callback) {
 
     parallel([
         (cb) => {
+
             debugs(`fetching sourecode ${problemId}_${submissionId}`);
+            log(GB(`  fetching sourecode ${problemId}_${submissionId}`));
+
             let filePath = path.join(outputPath, `${problemId}_${submissionId}.${ext}`);
             getSourceCode(submissionUrl, filePath, `code ${problemId}_${submissionId}` ,cb);
         },
         (cb) => {
+
             debugs(`fetching problem ${problemId}`);
+            log(GB(`  fetching problem ${problemId}`));
+
             let filePath = path.join(outputPath, `${problemId}.html`);
             getProblem(problemUrl,filePath, `problem ${problemId}`, cb);
         },
@@ -242,8 +266,13 @@ function getResource(dir, submission, callback) {
             mkdirp(outputPath,cb);
         }
     ], (err, data) => {
+
         if(err){
             return callback(err);
+        }
+
+        if( data.length < 2 ){
+            return callback();
         }
 
         each([ data[0], data[1] ], writeOutputs , callback);
@@ -265,11 +294,12 @@ function getOnlySource(dir, submission, callback) {
 
     parallel([
         (cb) => {
+
             debugs(`fetching sourecode ${problemId}_${submissionId}`);
+            log(GB(`  fetching sourecode ${problemId}_${submissionId}`));
 
             let filePath = path.join(outputPath, `${problemId}_${submissionId}.${ext}`);
-
-            getSourceCode(submissionUrl, filePath, `code ${problemId}_${submissionId}` ,cb);
+            getSourceCode(submissionUrl, filePath, `code ${problemId}_${submissionId}` , cb);
         },
         (cb) => {
             mkdirp(outputPath,cb);
@@ -278,6 +308,10 @@ function getOnlySource(dir, submission, callback) {
 
         if(err){
             return callback(err);
+        }
+
+        if( !data.length ){
+            return callback();
         }
 
         writeOutputs(data[0], callback);
@@ -308,7 +342,7 @@ function getSourceCode(submissionUrl, filePath, name, callback) {
         let source = $('.program-source');
 
         if( !source.length ){
-            console.log(chalk.bold.red(`no soure code found ${submissionUrl}`));
+            logr(`  no soure code found ${submissionUrl}`);
             return callback();
         }
 
@@ -342,7 +376,7 @@ function getProblem(problemUrl, filePath, name, callback) {
         let pst = $('.problem-statement');
 
         if( !pst.length ){
-            console.log(chalk.bold.red(`no problem statement found ${problemUrl}.`));
+            logr(`  no problem statement found ${problemUrl}`);
             return callback();
         }
 
@@ -359,9 +393,13 @@ function getProblem(problemUrl, filePath, name, callback) {
  * @param callback
  */
 function writeOutputs(output, callback) {
+
     if( typeof output === 'undefined' || output === null  ){
         return callback();
     }
+
     debugs(`saving ${output.name}`);
+    log(GB(`  saving ${output.name}`));
+
     fs.writeFile(output.path, output.content, callback);
 }

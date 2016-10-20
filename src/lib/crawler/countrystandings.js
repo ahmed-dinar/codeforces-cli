@@ -6,43 +6,55 @@ import cheerio from 'cheerio';
 import Table from 'cli-table2';
 import chalk from 'chalk';
 import _ from 'lodash';
+import { line } from 'cli-spinners';
+import ora from 'ora';
 import { whilst } from 'async';
+import { log, logr, commonHeaders } from '../helpers';
+import countries from '../countries';
 
 var debugs = debug('CF:standings:c');
+var spinner = ora({ spinner: line });
 var GB = chalk.bold.green;
 var CB = chalk.bold.cyan;
 var RB = chalk.bold.red;
 
+
+/**
+ *
+ * @param options - { contestId, country }
+ */
 export default (options) => {
 
     if( !_.has(options,'contestId') || !_.has(options,'country') ){
-        console.log("parameters required");
-        process.exit(1);
+        throw new Error("contestId and country required");
     }
 
     let { contestId, country } = options;
 
-    let headers = {
-        "Host": "codeforces.com",
-        "Upgrade-Insecure-Requests": 1,
-        "User-Agent": "Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/53.0.2785.143 Safari/537.36",
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.8"
-    };
+    if( countries.indexOf(country) === -1 ){
+        logr(`  Error: Invalid country.Please check and try again.`);
+        return;
+    }
+
+    let headers = commonHeaders();
 
     let reqOptions = {
         uri: '',
         headers: headers
     };
 
-
     let table = new Table();
-    var total = 54;
+    var total = _.has(options,'count')
+        ? options.count
+        : 50;
     var totalPage = 5;
     var count = 0;
+    var found = 0;
     var page = 1;
 
     let contestName = "";
+
+    log('');
 
     whilst(
         () => {
@@ -53,6 +65,8 @@ export default (options) => {
             reqOptions.uri =  `http://codeforces.com/contest/${contestId}/standings//page/${page}`;
 
             debugs(`Fetching from page ${page}...`);
+            spinner.text = `Fetching standings - page ${page}...`;
+            spinner.start();
 
             request.get(reqOptions, (err, response, body) => {
 
@@ -66,12 +80,23 @@ export default (options) => {
                     return next('HTTP error');
                 }
 
+                spinner.stop();
+
                 var $ = cheerio.load(body, {decodeEntities: true});
                 let standings = $('table.standings .standings-flag');
 
                 standings = _.filter(standings, (stdng) => {
                     return $(stdng).attr('title') === country;
                 });
+
+                found += standings.length;
+                let remain = (total - found) < 0
+                    ? 0
+                    : (total - found);
+
+                spinner.text = `${standings.length} users found in page ${page} [${remain} remaining]`;
+                spinner.start();
+                spinner.succeed();
 
                 _.forEach(standings, (standing) => {
 
@@ -113,7 +138,6 @@ export default (options) => {
                     table.push( data );
                 });
 
-
                 if( page === 1 ){
                     contestName = _.replace( $('.contest-name a').text() , /\s\s+/g , '' );
                     let pg = $('.page-index');
@@ -132,30 +156,36 @@ export default (options) => {
         function (err, n) {
 
             if(err){
-                console.log(err);
-                process.exit(1);
+                spinner.fail();
+                logr(err);
+                return;
+            }
+
+            if( !table.length ){
+                log(`No standings found.`);
+                return;
             }
 
             let totalProblem = table[0].length - 5;
             let problemChar = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
             let head = [ GB('#'), GB('Rank'), GB('Who'), GB('#'), GB('*') ];
-            head = head.concat( _.slice( problemChar, 0, totalProblem).map( x => {
-                return GB(x);
-            }));
+
+            let problemNames = _
+                                .slice( problemChar, 0, totalProblem )
+                                .map( x => {
+                                    return GB(x);
+                                });
+
+            head = head.concat( problemNames );
             table.options.head = head;
 
-
-            console.log();
-            console.log(CB(`Contest: ${contestName}`));
-            console.log(CB(`Country: ${country}`));
-            console.log(table.toString());
-
-            process.exit(0);
-
+            log('');
+            log(CB(`Contest: ${contestName}`));
+            log(CB(`Country: ${country}`));
+            log(table.toString());
         }
     );
 }
-
 
 
 /**
