@@ -18,8 +18,13 @@ var mockResponse = {
 };
 var mockBody = {
     status: 'OK',
-    result: [],
-    comment: ''
+    comment: '',
+    result: [{
+        contestName: 'Roud test',
+        rank: 1,
+        newRating: 2000,
+        oldRating: 1900
+    }]
 };
 
 describe('Codeforces', function() {
@@ -122,6 +127,39 @@ describe('Codeforces', function() {
         });
 
         describe('[onerror]', function() {
+            describe('{Request error}', function() {
+
+                var logCalled;
+
+                beforeEach(function(){
+                    logCalled = false;
+                    sinon.stub(helpers, 'logr', function () { logCalled = true; });
+                    sinon.stub(process.stderr,'write'); //disable spinner
+                    sinon
+                        .stub(request, 'get')
+                        .yields(new Error('Error'), mockResponse,mockBody);
+                });
+
+                afterEach(function(){
+                    helpers.logr.restore();
+                    process.stderr.write.restore();
+                    request.get.restore();
+                });
+
+                it('should call request', function(done){
+                    userrating('Ahmed_Dinar', true);
+                    expect(request.get.called).to.be.true;
+                    done();
+                });
+
+                it('should call console.error when request failed', function(done){
+                    expect(logCalled).to.be.false;
+                    userrating('Ahmed_Dinar', true);
+                    expect(logCalled).to.be.true;
+                    done();
+                });
+            });
+
             describe('{HTTP error}', function() {
 
                 var logCalled;

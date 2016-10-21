@@ -103,6 +103,7 @@ function userrating(handle = null, noChart = false) {
  * @param {Array} axisX - x axis data (constest ratings)
  * @param {Array} axisY - y axis data (constest ratings)
  */
+/* istanbul ignore next  */
 function showLineChart(axisX,axisY) {
 
     let screen = blessed.screen();
