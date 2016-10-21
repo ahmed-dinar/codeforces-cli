@@ -7,7 +7,7 @@
     "cf": "build/bin/cli.js"
   },
   "scripts": {
-    "test": "./node_modules/.bin/nyc ./node_modules/.bin/mocha  --compilers js:babel-register \"test/**/*\"",
+    "test": "./node_modules/.bin/nyc ./node_modules/.bin/mocha  --compilers js:babel-register \"tests/**/*.js\"",
     "coverage": "./node_modules/.bin/nyc report --reporter=text-lcov | coveralls"
   },
   "repository": {
@@ -41,7 +41,9 @@
     "gulp-babel": "^6.1.2",
     "mocha": "^3.1.0",
     "mocha-lcov-reporter": "^1.2.0",
-    "nyc": "^8.3.0"
+    "nyc": "^8.3.0",
+    "sinon": "^1.17.6",
+    "sinon-chai": "^2.8.0"
   },
   "dependencies": {
     "JSONStream": "^1.2.1",
@@ -56,6 +58,7 @@
     "commander": "^2.9.0",
     "crypto-js": "^3.1.7",
     "debug": "^2.2.0",
+    "has": "^1.0.1",
     "inquirer": "^1.2.1",
     "jsonfile": "^2.4.0",
     "lodash": "^4.16.3",

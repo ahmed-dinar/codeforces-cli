@@ -36,7 +36,7 @@ export default (callback) => {
 
     let allTags = {};
 
-    spinner.text = "Loading tags...";
+    spinner.text = "Fetching all tags...";
     spinner.start();
 
     request
@@ -60,11 +60,11 @@ export default (callback) => {
              */
 
             debugs('parsing completed');
-            spinner.stop();
 
             let isCallback = typeof callback === 'function';
 
             if( responseCode !== 200 ){
+                spinner.fail();
                 if(isCallback){
                     return callback(`Failed, HTTP status: ${responseCode}`);
                 }
@@ -76,6 +76,7 @@ export default (callback) => {
             // Content not json, request failed
             //
             if( contentType.indexOf('application/json;') === -1 ){
+                spinner.fail();
                 if(isCallback){
                     return callback('Failed.Not valid data.');
                 }
@@ -84,9 +85,10 @@ export default (callback) => {
             }
 
             //
-            // API reject request
+            // API rejects the request
             //
             if( apiFailed ){
+                spinner.fail();
                 if(isCallback){
                     return callback(apiMsg);
                 }
@@ -94,6 +96,7 @@ export default (callback) => {
                 return;
             }
 
+            spinner.succeed();
 
             //
             // If callback given, return tags
@@ -125,7 +128,7 @@ export default (callback) => {
                 table.push([key, value]);
             });
 
-            log();
+            log('');
             log(chalk.bold.green(` Total tag: ${table.length}`));
             log(table.toString());
         })

@@ -12,7 +12,7 @@ var debugs = debug('helpers:checkPath');
  */
 export function logr(text) {
     if( typeof text === 'string' ){
-        text = chalk.bold.red(text);
+        text = chalk.red.bold(`  Error: ${text}`);
     }
     console.error(text);
 }
@@ -54,21 +54,24 @@ export function checkPath(directory, isFile, callback) {
     fs.stat(directory, function(err, stats) {
 
         if(err){
+
             if( err.code === 'EPERM' ){
-                return callback(`Permission denied.Please make sure you have permission for '${directory}'`);
+                return callback(`  Error: Permission denied.Please make sure you have permission for '${directory}'`);
             }
-            else if( err.code === 'ENOENT' ){
-                return callback(`No such file or directory '${directory}'`);
+
+            if( err.code === 'ENOENT' ){
+                return callback(`  Error: No such file or directory '${directory}'`);
             }
+
             return callback(err);
         }
 
         if( isFile && !stats.isFile() ){
-            return callback(`Not a file '${directory}'.`);
+            return callback(`  Error: Not a file '${directory}'.`);
         }
 
         if( !isFile && !stats.isDirectory() ){
-            return callback(`Not a directory '${directory}'.`);
+            return callback(`  Error: Not a directory '${directory}'.`);
         }
 
         return callback();
@@ -78,7 +81,7 @@ export function checkPath(directory, isFile, callback) {
 
 /**
  * Get cwd and join a file name
- * @param fileName
+ * @param {String} fileName
  * @returns {string|*}
  */
 export function getCWD(fileName) {

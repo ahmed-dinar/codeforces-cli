@@ -8,6 +8,7 @@ import Table from 'cli-table2';
 import chalk from 'chalk';
 import { line } from 'cli-spinners';
 import qs from 'qs';
+import forEach from 'lodash/forEach';
 import * as contrib from 'blessed-contrib';
 import blessed from 'blessed';
 import striptags from 'striptags';
@@ -15,159 +16,92 @@ import { log, logr } from '../helpers';
 
 var debugs = debug('CF:userrating');
 var spinner = ora({ spinner: line });
-
+var CB = chalk.bold.cyan;
 
 /**
  * Get and print user rating of all contests
- *
- * @param handle
- *         - user codefroces handle
- * @param noChart
- *          - if true display table insted of chart
+ * @param {String} handle - user codefroces handle
+ * @param {boolean} noChart - if true display table insted of chart
  */
-export default (handle = '', noChart = false) => {
+function userrating(handle = null, noChart = false) {
 
-    let reqOptions = {
-        uri: ``,
-        json: true
-    };
+    if( handle === null || typeof handle !== 'string' ){
+        throw new Error(`handle should be string and should not be empty or null`);
+    }
 
     let qsf = qs.stringify({ handle: handle });
-    reqOptions.uri = `http://codeforces.com/api/user.rating?${qsf}`;
-
-    debugs(reqOptions.uri);
-
-    //
-    // Request validators
-    //
-    let apiFailed= false;
-    let apiMsg = '';
-    let responseCode = '404';
-    let contentType = '';
-
-    //
-    // default chart view, only need newRating data
-    //
-    let jStream = JSONStream.parse('result.*.newRating');
-
-    //
-    // Chart's x axis and y axis data
-    //
-    var axisX = [];
-    var axisY = [];
-
-    //
-    // No chart,Get all result and make a table.
-    // using existing'axisX' variable
-    //
-    if( noChart ){
-        jStream = JSONStream.parse('result.*');
-        axisX = new Table({
-            head: [
-                chalk.bold.cyan('Contest'),
-                chalk.bold.cyan('Rank'),
-                chalk.bold.cyan('Rating change'),
-                chalk.bold.cyan('New rating')
-            ]
-            // colWidths: [60, 10, 10, 10],
-            //  wordWrap:true
-        });
-    }
+    let reqOptions = {
+        uri: `http://codeforces.com/api/user.rating?${qsf}`,
+        json: true
+    };
 
     spinner.text = "Fetching rating...";
     spinner.start();
 
-    request
-        .get(reqOptions)
-        .on('error', (err) => {
+    request.get(reqOptions, (err, response, body) => {
 
-            debugs(`Failed: Request error`);
-            debugs(err);
-
+        if(err){
+            spinner.fail();
             logr('Failed [Request]');
+            return;
+        }
 
-        })
-        .on('complete', () => {
+        if( response.statusCode !== 200 ){
+            spinner.fail();
+            logr(`Failed HTTP`);
+            return;
+        }
 
-            debugs('parsing completed');
+        let contentType = response.headers['content-type'];
+        if( !contentType.includes('application/json') ){
+            spinner.fail();
+            logr('Failed.Not valid data.');
+            return;
+        }
 
-            if( responseCode !== 200 ){
-                spinner.fail();
-                logr('Failed.');
-                return;
-            }
+        if( body.status !== 'OK' ){
+            spinner.fail();
+            logr(body.comment);
+            return;
+        }
 
-            if( contentType.indexOf('application/json') === -1 ){
-                spinner.fail();
-                logr('Failed.Not valid data.');
-                return;
-            }
+        spinner.succeed();
 
-            if( apiFailed ){
-                spinner.fail();
-                logr(apiMsg);
-                return;
-            }
+        if( noChart ){
 
-            spinner.succeed();
+            let table = new Table({
+                head: [ CB('Contest'), CB('Rank'), CB('Rating change'), CB('New rating') ]
+            });
 
-            log('');
-            log(chalk.bold.green(` User: ${handle}`));
-            log(chalk.bold.green(` Total contest: ${axisX.length}`));
-
-            //
-            // Show table
-            //
-            if (noChart) {
-                log(axisX.toString());
-                return;
-            }
-
-            showLineChart(axisX,axisY);
-        })
-        .on('response', (response) => {
-
-            responseCode = response.statusCode;
-            contentType = response.headers['content-type'];
-
-            debugs(`HTTP Code: ${responseCode}`);
-            debugs(`Content-Type: ${contentType}`);
-        })
-        .pipe( jStream )
-        .on('header', (data) => {
-
-            debugs(`API Status: ${data.status}`);
-
-            if( data.status !== 'OK' ){
-                apiFailed = true;
-                apiMsg = data.comment;
-            }
-        })
-        .on('data', (data) => {
-
-            // debugs('data received');
-
-            if( noChart ){
-                axisX.push([
+            forEach(body.result, (data) => {
+                table.push([
                     striptags(data.contestName.toString()),
                     data.rank,
                     (parseInt(data.newRating) - parseInt(data.oldRating)).toString(),
                     data.newRating
                 ]);
-            }else{
-                axisY.push(data);
-                axisX.push(data.toString());
-            }
-        });
-}
+            });
 
+            log(table.toString());
+            return;
+        }
+
+        let axisX = [];
+        let axisY = [];
+        forEach(body.result, (data) => {
+            axisY.push(data.newRating);
+            axisX.push(data.newRating.toString());
+        });
+
+        this.showLineChart(axisX,axisY);
+    });
+}
 
 
 /**
  * Show user rating chart
- *
- * @param axisX - x axis data (constest ratings)
- * @param axisY - y axis data (constest ratings)
+ * @param {Array} axisX - x axis data (constest ratings)
+ * @param {Array} axisY - y axis data (constest ratings)
  */
 function showLineChart(axisX,axisY) {
 
@@ -205,3 +139,7 @@ function showLineChart(axisX,axisY) {
 
     screen.render();
 }
+
+export default userrating;
+module.exports.userrating = userrating;
+module.exports.showLineChart = showLineChart;

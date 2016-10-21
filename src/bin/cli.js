@@ -3,7 +3,8 @@
 
 var program = require('commander');
 import path from 'path';
-import { has, forEach } from 'lodash';
+import has from 'has';
+import forEach  from 'lodash/forEach';
 import chalk from 'chalk';
 import { version } from '../../package.json';
 import * as Codeforces from '../..';

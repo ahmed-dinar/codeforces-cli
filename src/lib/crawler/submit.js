@@ -27,7 +27,7 @@ var cookieJar = request.jar();
 var cookieRequest = request.defaults({ jar: cookieJar });
 var debugs = debug('CF:submit');
 var spinner = ora({ spinner: line });
-var TIME_OUT = 30000;
+const TIME_OUT = 30000;
 
 
 /**
