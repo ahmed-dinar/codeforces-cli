@@ -11,43 +11,43 @@ var GB = chalk.green.bold;
 
 export default {
 
-    countrs() {
+	countrs() {
 
-        let table = new Table({
-            head: [GB(`Country`)]
-        });
+		let table = new Table({
+			head: [GB('Country')]
+		});
 
-        _.forEach(countries, (country) => {
-            table.push([country]);
-        });
+		_.forEach(countries, (country) => {
+			table.push([country]);
+		});
 
-        log('');
-        log(table.toString());
-    },
-    exts() {
+		log('');
+		log(table.toString());
+	},
+	exts() {
 
-        let table = new Table({
-            head: [GB(`Language`), GB(`Extension`)]
-        });
+		let table = new Table({
+			head: [GB('Language'), GB('Extension')]
+		});
 
-        _.forEach(languages.extensions, (typeId, extension) => {
-            table.push([languages.typeId[typeId], `.${extension}`]);
-        });
+		_.forEach(languages.extensions, (typeId, extension) => {
+			table.push([languages.typeId[typeId], `.${extension}`]);
+		});
 
-        log('');
-        log(table.toString());
-    },
-    langs() {
+		log('');
+		log(table.toString());
+	},
+	langs() {
 
-        let table = new Table({
-            head: [GB(`Language`), GB(`Id`)]
-        });
+		let table = new Table({
+			head: [GB('Language'), GB('Id')]
+		});
 
-        _.forEach(languages.typeId, (language, typeId) => {
-            table.push([language, typeId]);
-        });
+		_.forEach(languages.typeId, (language, typeId) => {
+			table.push([language, typeId]);
+		});
 
-        log('');
-        log(table.toString());
-    }
-}
+		log('');
+		log(table.toString());
+	}
+};

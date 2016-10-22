@@ -22,82 +22,82 @@ var GB = chalk.bold.green;
 export default (handles) => {
 
 
-    let invalidHandle = !_.isArray(handles) && typeof handles !== 'string';
-    if( invalidHandle ){
-        throw new Error(`handles must be array or string`);
-    }
+	let invalidHandle = !_.isArray(handles) && typeof handles !== 'string';
+	if( invalidHandle ){
+		throw new Error('handles must be array or string');
+	}
 
-    let reqOptions = {
-        uri: "",
-        json: true
-    };
+	let reqOptions = {
+		uri: '',
+		json: true
+	};
 
-    let handlesString = handles;
-    if( _.isArray(handles) ){
-        handlesString = _.join(handles,';');
-    }
-    else if( handles.indexOf(',') !== -1 ){
-        handlesString = _.split(handles,',');
-        handlesString = _.join(handlesString,';');
-    }
+	let handlesString = handles;
+	if( _.isArray(handles) ){
+		handlesString = _.join(handles,';');
+	}
+	else if( handles.indexOf(',') !== -1 ){
+		handlesString = _.split(handles,',');
+		handlesString = _.join(handlesString,';');
+	}
 
-    let qsf = qs.stringify({ handles: handlesString }, { encode: false });
-    reqOptions.uri = `http://codeforces.com/api/user.info?${qsf}`;
+	let qsf = qs.stringify({ handles: handlesString }, { encode: false });
+	reqOptions.uri = `http://codeforces.com/api/user.info?${qsf}`;
 
-    debugs(`Fetching user data...`);
-    spinner.text = `fetching user info...`;
-    spinner.start();
+	debugs('Fetching user data...');
+	spinner.text = 'fetching user info...';
+	spinner.start();
 
-    request
-        .get(reqOptions, (error, response, body) => {
+	request
+		.get(reqOptions, (error, response, body) => {
 
-            if(error){
-                spinner.fail();
-                logr(error);
-                return;
-            }
+			if(error){
+				spinner.fail();
+				logr(error);
+				return;
+			}
 
-            let { statusCode } = response;
+			let { statusCode } = response;
 
-            if( statusCode !== 200 ){
-                spinner.fail();
-                logr(body.comment || '  HTTP error');
-                return;
-            }
+			if( statusCode !== 200 ){
+				spinner.fail();
+				logr(body.comment || '  HTTP error');
+				return;
+			}
 
-            if( body.status !== 'OK' ){
-                spinner.fail();
-                logr(`  ${body.comment}`);
-                return;
-            }
+			if( body.status !== 'OK' ){
+				spinner.fail();
+				logr(`  ${body.comment}`);
+				return;
+			}
 
-            spinner.succeed();
+			spinner.succeed();
 
-            let table = new Table({
-                head: [ GB(`Name`), GB(`Handle`), GB(`Rank`), GB(`Rating`), GB(`Max`), GB(`Contrib.`), GB(`Country`), GB(`Organization`)  ]
-            });
+			let table = new Table({
+				head: [ GB('Name'), GB('Handle'), GB('Rank'), GB('Rating'), GB('Max'), GB('Contrib.'), GB('Country'), GB('Organization') ]
+			});
 
-            _.forEach(body.result, (data) => {
+			_.forEach(body.result, (data) => {
 
-                let name = '';
-                if( _.has(data,'firstName') && _.has(data,'lastName') ){
-                    name = `${data.firstName} ${data.lastName}`;
-                }
+				let name = '';
+				if( _.has(data,'firstName') && _.has(data,'lastName') ){
+					name = `${data.firstName} ${data.lastName}`;
+				}
 
-                let info = [
-                    name,
-                    data.handle || '',
-                    data.rank || '0',
-                    data.rating || '',
-                    data.maxRating || '',
-                    data.contribution || '',
-                    data.country || '',
-                    data.organization || ''
-                ];
-                table.push(info);
-            });
+				let info = [
+					name,
+					data.handle || '',
+					data.rank || '0',
+					data.rating || '',
+					data.maxRating || '',
+					data.contribution || '',
+					data.country || '',
+					data.organization || ''
+				];
+				table.push(info);
+			});
 
-            log('');
-            log(table.toString());
-        });
-}
+			log('');
+			log(table.toString());
+		});
+};

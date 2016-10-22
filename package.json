@@ -9,7 +9,9 @@
   "scripts": {
     "test": "./node_modules/.bin/nyc ./node_modules/.bin/mocha  --compilers js:babel-register \"tests/**/*.js\"",
     "coverage": "./node_modules/.bin/nyc report --reporter=text-lcov | coveralls",
-    "cov-html": "./node_modules/.bin/nyc report --reporter=html"
+    "cov-html": "./node_modules/.bin/nyc report --reporter=html",
+    "lint": "./node_modules/.bin/eslint -c .eslintrc src/**",
+    "single": "./node_modules/.bin/mocha  --compilers js:babel-register \"tests/api/test_standings.js\""
   },
   "repository": {
     "type": "git",
@@ -38,6 +40,7 @@
     "chai": "^3.5.0",
     "coveralls": "^2.11.14",
     "debug": "^2.2.0",
+    "eslint": "^3.8.1",
     "gulp": "^3.9.1",
     "gulp-babel": "^6.1.2",
     "mocha": "^3.1.0",
