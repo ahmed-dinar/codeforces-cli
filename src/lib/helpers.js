@@ -41,6 +41,15 @@ export function isUnix() {
 
 
 /**
+ *
+ */
+/* istanbul ignore next */
+export function clear() {
+    process.stdout.write('\x1B[H\x1B[J');
+}
+
+
+/**
  * Get system home dir  ( Windows C:/Users/{user}, Unix ~/  )
  * @returns {*}
  */

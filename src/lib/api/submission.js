@@ -14,8 +14,8 @@ import { line } from 'cli-spinners';
 import ora from 'ora';
 import { waterfall, whilst } from 'async';
 import verdicts from '../verdicts';
-import { log, logr, getHomeDir, validateEmpty } from '../helpers';
-import clear from '../utils/clear';
+import { log, logr, getHomeDir, validateEmpty, clear } from '../helpers';
+
 
 var debugs = debug('CF:submission');
 var spinner = ora({ spinner: line });

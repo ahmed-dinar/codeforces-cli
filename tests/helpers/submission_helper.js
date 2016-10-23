@@ -29,7 +29,7 @@ module.exports = function(readF,promptF,getF){
         this.s5 = sinon.stub(process.stderr,'write');
         this.s6 = sinon.stub(helpers,'logr');
         this.s7 = sinon.stub(helpers,'log');
-        this.s8 = sinon.stub(helpers,'clearSreen');
+        this.s8 = sinon.stub(helpers,'clear');
     });
     afterEach(function(){
         this.s1.restore();
