@@ -1,6 +1,5 @@
 'use strict';
 
-import clear from 'clear';
 import path from 'path';
 import has from 'has';
 import forEach from 'lodash/forEach';
@@ -15,7 +14,7 @@ import { line } from 'cli-spinners';
 import ora from 'ora';
 import { waterfall, whilst } from 'async';
 import verdicts from '../verdicts';
-import { log, logr, getHomeDir, validateEmpty } from '../helpers';
+import { log, logr, getHomeDir, validateEmpty, clearSreen } from '../helpers';
 
 var debugs = debug('CF:submission');
 var spinner = ora({ spinner: line });
@@ -28,93 +27,103 @@ var STATUS_DELAY = 5000; //4 seconds
 
 
 /**
+ *
+ /**
  * @param {Number} count - total submisison to fetch
  * @param {Boolean} remember - if true, save handle in config file
  * @param {Boolean} watch - if true, fetch submission until testing done
  * @param {Boolean} contest - if true then a contestId must exists and fetch only contest submissions
  * @param {Number} contestId - contest id of submission
  * @param {Number} delay - live watch refresh delay [in milliseconds]
+ * @param {Function} callback
  */
-export default ({ count = 1, remember = false, watch = false, contest = false, contestId = null, delay = STATUS_DELAY } = {}) => {
+export default ({ count = 1, remember = false, watch = false, contest = false, contestId = null, delay = STATUS_DELAY, callback = null } = {}) => {
 
-	let options = { count, watch, remember, contest, contestId, delay };
+    let options = { count, watch, remember, contest, contestId, delay };
 
-	options.config = path.resolve(`${getHomeDir()}/.cfconfig`);
+    options.config = path.resolve(`${getHomeDir()}/.cfconfig`);
 
-	if( options.delay >= 2000 ){
-		STATUS_DELAY = options.delay;
-	}
+    /* istanbul ignore else  */
+    if( options.delay >= 2000 ){
+        STATUS_DELAY = options.delay;
+    }
 
-	waterfall([
-		(next) => {
-			readConfig(options, next);
-		},
-		getSubmission
-	],(err,res) => {
-		if(err){
-			spinner.fail();
-			return logr(err);
-		}
-	});
+    waterfall([
+        (next) => {
+            readConfig(options, next);
+        },
+        getSubmission
+    ],(err) => {
+
+        if( typeof callback === 'function' ){
+            spinner.stop();
+            return callback(err);
+        }
+
+        /* istanbul ignore else  */
+        if(err){
+            spinner.fail();
+            logr(err);
+        }
+    });
 };
 
 
 /**
- * Reading config file searching saved credentials
+ * Reading config file and search saved credentials
  * @param {Object} options
  * @param {Function} next
  */
 function readConfig(options, next) {
 
-	spinner.text = 'Reading config file...';
-	spinner.start();
+    spinner.text = 'Reading config file...';
+    spinner.start();
 
-	jsonfile.readFile(options.config, (err, obj) => {
+    jsonfile.readFile(options.config, (err, obj) => {
 
-		let askHandle = false;
+        let askHandle = false;
 
-		if( err ){
+        if( err ){
 
-			if( err.code === 'EPERM' ){
-				return next('Permission denied config file.');
-			}
+            if( err.code === 'EPERM' ){
+                throw new Error('Permission denied config file.');
+            }
 
-			if( err.code !== 'ENOENT' ){
-				return next(err);
-			}
+            if( err.code !== 'ENOENT' ){
+                return next(err);
+            }
 
-			debugs('Config file not found');
-			askHandle = true;
-		}
+            debugs('Config file not found');
+            askHandle = true;
+        }
 
-		spinner.stop();
+        spinner.stop();
 
-		if( askHandle || !has(obj,'user') ){
+        if( askHandle || !has(obj,'user') ){
 
-			let credentials = [{
-				name: 'handle',
-				message: 'handle: ',
-				validate: validateEmpty
-			}];
+            let credentials = [{
+                name: 'handle',
+                message: 'handle: ',
+                validate: validateEmpty
+            }];
 
-			inquirer.prompt(credentials).then( (answer) => {
+            inquirer.prompt(credentials).then( (answer) => {
 
-				options.handle = answer.handle;
+                options.handle = answer.handle;
+                jsonfile.writeFileSync(options.config, { user: options.handle });//save handle
 
-				jsonfile.writeFileSync(options.config, { user: options.handle });//save handle
+                return next(null, options);
+            });
+            return;
+        }
 
-				return next(null, options);
-			});
-			return;
-		}
+        debugs('Handle found in config file');
+        spinner.text = `Saved handle found '${obj.user}'`;
+        spinner.succeed();
 
-		debugs('Handle found in config file');
-		spinner.text = `Saved handle found '${obj.user}'`;
-		spinner.succeed();
-
-		options.handle = obj.user;
-		return next(null, options);
-	});
+        options.handle = obj.user;
+        return next(null, options);
+    });
 }
 
 
@@ -126,43 +135,47 @@ function readConfig(options, next) {
 function getSubmission(options, next) {
 
     //go to live submssion status
-	if( options.watch ){
-		return watchRun(options,next);
-	}
+    if( options.watch ){
+        return watchRun(options,next);
+    }
 
-	let url = generateUrl(options);
-	debugs(`URL = ${url}`);
+    let url = generateUrl(options);
+    debugs(`URL = ${url}`);
 
-	let reqOptions = {
-		uri: url,
-		json: true,
-		timeout: TIME_OUT
-	};
+    let reqOptions = {
+        uri: url,
+        json: true,
+        timeout: TIME_OUT
+    };
 
-	spinner.text = 'Fetching submissions..';
-	spinner.start();
+    spinner.text = 'Fetching submissions..';
+    spinner.start();
 
-	request
-		.get(reqOptions, (error, response, body) => {
 
-			if(error){
-				return next(error);
-			}
+    request
+        .get(reqOptions, (error, response, body) => {
 
-			let { statusCode } = response;
-			if( statusCode!==200 ){
-				return next(body.comment || 'HTTP error');
-			}
+            if(error){
+                return next(error);
+            }
 
-			if( body.status !== 'OK' ){
-				return next(body.comment);
-			}
+            let { statusCode } = response;
+            if( statusCode!==200 ){
+                if( has(body,'comment') ){
+                    return next(body.comment);
+                }
+                return next('HTTP error');
+            }
 
-			spinner.succeed();
-			generateTable(body.result);
+            if( body.status !== 'OK' ){
+                return next(body.comment);
+            }
 
-			return next();
-		});
+            spinner.succeed();
+            generateTable(body.result);
+
+            return next();
+        });
 }
 
 
@@ -173,17 +186,17 @@ function getSubmission(options, next) {
  */
 function watchRun(options, next) {
 
-	let url = generateUrl(options);
-	debugs(url);
+    let url = generateUrl(options);
+    debugs(url);
 
-	let reqOptions = {
-		uri: url,
-		json: true,
-		timeout: TIME_OUT
-	};
+    let reqOptions = {
+        uri: url,
+        json: true,
+        timeout: TIME_OUT
+    };
 
-	var keepWatching = true;
-	whilst(
+    var keepWatching = true;
+    whilst(
 	    () => {
 		    return keepWatching;
 	    },
@@ -201,7 +214,10 @@ function watchRun(options, next) {
 
                     let { statusCode } = response;
                     if( statusCode!==200 ){
-                        return callback(body.comment || 'HTTP error');
+                        if( has(body,'comment') ){
+                            return callback(body.comment);
+                        }
+                        return callback('HTTP error');
                     }
 
                     if( body.status !== 'OK' ){
@@ -243,68 +259,68 @@ function watchRun(options, next) {
  */
 function generateTable(runs, isWatch = false){
 
-	let table = new Table({
-		head: [ GN('Id'), GN('Problem') , GN('Lang'), GN('Verdict'), GN('Time'), GN('Memory') ]
-	});
+    let table = new Table({
+        head: [ GN('Id'), GN('Problem') , GN('Lang'), GN('Verdict'), GN('Time'), GN('Memory') ]
+    });
 
-	let done = true;
-	let who = '';
+    let done = true;
+    let who = '';
 
-	forEach(runs, (run) => {
+    forEach(runs, (run) => {
 
-		let { id, contestId, problem, programmingLanguage,verdict, passedTestCount, timeConsumedMillis, memoryConsumedBytes, author } = run;
-		let memory = parseInt(memoryConsumedBytes,10) / 1000;
-		let passed = parseInt(passedTestCount,10);
-		who = author.members[0].handle;
+        let { id, contestId, problem, programmingLanguage,verdict, passedTestCount, timeConsumedMillis, memoryConsumedBytes, author } = run;
+        let memory = parseInt(memoryConsumedBytes,10) / 1000;
+        let passed = parseInt(passedTestCount,10);
+        who = author.members[0].handle;
 
-		debugs(run.testset);
+        debugs(run.testset);
 
-		if( verdict === undefined ){
-			done = false;
-			verdict = chalk.white.bold('In queue');
-		}
-		else{
-			switch (verdict){
-				case 'TESTING':
-					done = false;
-					verdict = chalk.white.bold(verdicts[verdict]);
-					break;
-				case 'OK':
-					verdict = GB(verdicts[verdict]);
-					break;
-				case 'RUNTIME_ERROR':
-				case 'WRONG_ANSWER':
-				case 'PRESENTATION_ERROR':
-				case 'TIME_LIMIT_EXCEEDED':
-				case 'MEMORY_LIMIT_EXCEEDED':
-				case 'IDLENESS_LIMIT_EXCEEDED':
-					verdict = RB(`${verdicts[verdict]} on test ${passed+1}`);
-					break;
-				default:
-					verdict = RB(verdicts[verdict]);
-			}
-		}
+        if( verdict === undefined ){
+            done = false;
+            verdict = chalk.white.bold('In queue');
+        }
+        else{
+            switch (verdict){
+                case 'TESTING':
+                    done = false;
+                    verdict = chalk.white.bold(verdicts[verdict]);
+                    break;
+                case 'OK':
+                    verdict = GB(verdicts[verdict]);
+                    break;
+                case 'RUNTIME_ERROR':
+                case 'WRONG_ANSWER':
+                case 'PRESENTATION_ERROR':
+                case 'TIME_LIMIT_EXCEEDED':
+                case 'MEMORY_LIMIT_EXCEEDED':
+                case 'IDLENESS_LIMIT_EXCEEDED':
+                    verdict = RB(`${verdicts[verdict]} on test ${passed+1}`);
+                    break;
+                default:
+                    verdict = RB(verdicts[verdict]);
+            }
+        }
 
-		table.push([
-			id,
-			`${contestId}${problem.index} - ${problem.name}`,
-			programmingLanguage,
-			verdict,
-			`${timeConsumedMillis} MS`,
-			`${memory} KB`
-		]);
-	});
+        table.push([
+            id,
+            `${contestId}${problem.index} - ${problem.name}`,
+            programmingLanguage,
+            verdict,
+            `${timeConsumedMillis} MS`,
+            `${memory} KB`
+        ]);
+    });
 
     // in live watching mode, clear console in every refresh
-	if( isWatch ){
-		clear();
-	}
+    if( isWatch ){
+        clearSreen();
+    }
 
-	log('');
-	log(GB(`User: ${who}`));
-	log(table.toString());
+    log('');
+    log(GB(`User: ${who}`));
+    log(table.toString());
 
-	return !done;
+    return !done;
 }
 
 
@@ -315,21 +331,21 @@ function generateTable(runs, isWatch = false){
  */
 function generateUrl(options) {
 
-	if( options.contest ){
-		let params = qs.stringify({
-			handle: options.handle,
-			from: 1,
-			count: options.count,
-			contestId: options.contestId
-		}, { encode: false });
-		return `http://codeforces.com/api/contest.status?${params}`;
-	}
+    if( options.contest ){
+        let params = qs.stringify({
+            handle: options.handle,
+            from: 1,
+            count: options.count,
+            contestId: options.contestId
+        }, { encode: false });
+        return `http://codeforces.com/api/contest.status?${params}`;
+    }
 
-	let params = qs.stringify({
-		handle: options.handle,
-		from: 1,
-		count: options.count
-	}, { encode: false });
+    let params = qs.stringify({
+        handle: options.handle,
+        from: 1,
+        count: options.count
+    }, { encode: false });
 
-	return `http://codeforces.com/api/user.status?${params}`;
+    return `http://codeforces.com/api/user.status?${params}`;
 }

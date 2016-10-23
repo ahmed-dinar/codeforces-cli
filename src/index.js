@@ -14,17 +14,17 @@ import cfdefault from './lib/utils/cfdefault';
 
 
 export default {
-	standings: standings,
-	tags: tags,
-	userinfo: userinfo,
-	userrating: userrating,
-	usertags: usertags,
-	countrystandings: countrystandings,
-	ratings: ratings,
-	sourcecode: sourcecode,
-	submit: submit,
-	submission: submission,
-	cfdefault: cfdefault
+    standings: standings,
+    tags: tags,
+    userinfo: userinfo,
+    userrating: userrating,
+    usertags: usertags,
+    countrystandings: countrystandings,
+    ratings: ratings,
+    sourcecode: sourcecode,
+    submit: submit,
+    submission: submission,
+    cfdefault: cfdefault
 };
 
 

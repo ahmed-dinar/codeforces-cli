@@ -22,76 +22,76 @@ var CB = chalk.bold.cyan;
  */
 function userrating(handle = null, noChart = false) {
 
-	if( handle === null || typeof handle !== 'string' ){
-		throw new Error('handle should be string and should not be empty or null');
-	}
+    if( handle === null || typeof handle !== 'string' ){
+        throw new Error('handle should be string and should not be empty or null');
+    }
 
-	let qsf = qs.stringify({ handle: handle });
-	let reqOptions = {
-		uri: `http://codeforces.com/api/user.rating?${qsf}`,
-		json: true
-	};
+    let qsf = qs.stringify({ handle: handle });
+    let reqOptions = {
+        uri: `http://codeforces.com/api/user.rating?${qsf}`,
+        json: true
+    };
 
-	spinner.text = 'Fetching rating...';
-	spinner.start();
+    spinner.text = 'Fetching rating...';
+    spinner.start();
 
-	request.get(reqOptions, (err, response, body) => {
+    request.get(reqOptions, (err, response, body) => {
 
-		if(err){
-			spinner.fail();
-			logr('Failed [Request]');
-			return;
-		}
+        if(err){
+            spinner.fail();
+            logr('Failed [Request]');
+            return;
+        }
 
-		if( response.statusCode !== 200 ){
-			spinner.fail();
-			logr('Failed HTTP');
-			return;
-		}
+        if( response.statusCode !== 200 ){
+            spinner.fail();
+            logr('Failed HTTP');
+            return;
+        }
 
-		let contentType = response.headers['content-type'];
-		if( !contentType.includes('application/json') ){
-			spinner.fail();
-			logr('Failed.Not valid data.');
-			return;
-		}
+        let contentType = response.headers['content-type'];
+        if( contentType.indexOf('application/json') === -1 ){
+            spinner.fail();
+            logr('Failed.Not valid data.');
+            return;
+        }
 
-		if( body.status !== 'OK' ){
-			spinner.fail();
-			logr(body.comment);
-			return;
-		}
+        if( body.status !== 'OK' ){
+            spinner.fail();
+            logr(body.comment);
+            return;
+        }
 
-		spinner.succeed();
+        spinner.succeed();
 
-		if( noChart ){
+        if( noChart ){
 
-			let table = new Table({
-				head: [ CB('Contest'), CB('Rank'), CB('Rating change'), CB('New rating') ]
-			});
+            let table = new Table({
+                head: [ CB('Contest'), CB('Rank'), CB('Rating change'), CB('New rating') ]
+            });
 
-			forEach(body.result, (data) => {
-				table.push([
-					striptags(data.contestName.toString()),
-					data.rank,
-					(parseInt(data.newRating,10) - parseInt(data.oldRating,10)).toString(),
-					data.newRating
-				]);
-			});
+            forEach(body.result, (data) => {
+                table.push([
+                    striptags(data.contestName.toString()),
+                    data.rank,
+                    (parseInt(data.newRating,10) - parseInt(data.oldRating,10)).toString(),
+                    data.newRating
+                ]);
+            });
 
-			log(table.toString());
-			return;
-		}
+            log(table.toString());
+            return;
+        }
 
-		let axisX = [];
-		let axisY = [];
-		forEach(body.result, (data) => {
-			axisY.push(data.newRating);
-			axisX.push(data.newRating.toString());
-		});
+        let axisX = [];
+        let axisY = [];
+        forEach(body.result, (data) => {
+            axisY.push(data.newRating);
+            axisX.push(data.newRating.toString());
+        });
 
-		this.showLineChart(axisX,axisY);
-	});
+        this.showLineChart(axisX,axisY);
+    });
 }
 
 
@@ -103,39 +103,39 @@ function userrating(handle = null, noChart = false) {
 /* istanbul ignore next  */
 function showLineChart(axisX,axisY) {
 
-	let screen = blessed.screen();
+    let screen = blessed.screen();
 
-	let chartLine = contrib.line({
-		style: {
-			line: 'white',
-			text: 'green',
-			baseline: 'black'
-		},
-		width: '100%',
-		height: '80%',
-		top: 3,
-		showLegend: false,
-		wholeNumbersOnly: false,
-		label: ''
-	});
+    let chartLine = contrib.line({
+        style: {
+            line: 'white',
+            text: 'green',
+            baseline: 'black'
+        },
+        width: '100%',
+        height: '80%',
+        top: 3,
+        showLegend: false,
+        wholeNumbersOnly: false,
+        label: ''
+    });
 
 
-	let chartData = {
-		x: axisX,
-		y: axisY
-	};
+    let chartData = {
+        x: axisX,
+        y: axisY
+    };
 
-	screen.append(chartLine);
-	chartLine.setData([chartData]);
+    screen.append(chartLine);
+    chartLine.setData([chartData]);
 
     //
     // Exit when press esc, q or ctrl+c
     //
-	screen.key(['escape', 'q', 'C-c'], function(ch, key) {
-		return process.exit(0);
-	});
+    screen.key(['escape', 'q', 'C-c'], function(ch, key) {
+        return process.exit(0);
+    });
 
-	screen.render();
+    screen.render();
 }
 
 export default userrating;

@@ -41,6 +41,13 @@ describe('Codeforces', function() {
     describe('#standings', function() {
         describe('[core]', function() {
 
+            beforeEach(function(){
+                sinon.stub(process.stderr,'write');
+            });
+            afterEach(function(){
+                process.stderr.write.restore();
+            });
+
             it('should throw error when parameter is empty', function(done) {
                 expect(function () {
                     standings();

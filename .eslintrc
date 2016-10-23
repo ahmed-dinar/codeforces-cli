@@ -9,7 +9,7 @@
     "sourceType": "module"
   },
   "rules": {
-    "indent": [2, "tab", {
+    "indent": [2, 4, {
       "SwitchCase": 1,
       "MemberExpression": 1
     }],
