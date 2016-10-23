@@ -2,7 +2,6 @@ import fs from 'fs';
 import debug from 'debug';
 import path from 'path';
 import chalk from 'chalk';
-import clear from 'clear';
 
 var debugs = debug('helpers:checkPath');
 
@@ -32,11 +31,12 @@ export function log(text) {
 
 
 /**
- *
+ * Detect platform
+ * @returns {boolean}
  */
 /* istanbul ignore next */
-export function clearSreen() {
-    clear();
+export function isUnix() {
+    return process.platform.indexOf('win32') === -1;
 }
 
 
@@ -46,7 +46,7 @@ export function clearSreen() {
  */
 /* istanbul ignore next */
 export function getHomeDir() {
-    return process.env[(process.platform == 'win32') ? 'USERPROFILE' : 'HOME'];
+    return process.env[isUnix() ? 'HOME' : 'USERPROFILE'];
 }
 
 

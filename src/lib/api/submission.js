@@ -14,7 +14,8 @@ import { line } from 'cli-spinners';
 import ora from 'ora';
 import { waterfall, whilst } from 'async';
 import verdicts from '../verdicts';
-import { log, logr, getHomeDir, validateEmpty, clearSreen } from '../helpers';
+import { log, logr, getHomeDir, validateEmpty } from '../helpers';
+import clear from '../utils/clear';
 
 var debugs = debug('CF:submission');
 var spinner = ora({ spinner: line });
@@ -313,7 +314,7 @@ function generateTable(runs, isWatch = false){
 
     // in live watching mode, clear console in every refresh
     if( isWatch ){
-        clearSreen();
+        clear();
     }
 
     log('');
