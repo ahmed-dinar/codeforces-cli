@@ -15,11 +15,9 @@ var GB = chalk.bold.green;
 
 
 /**
- *
  * @param handles
  */
 export default (handles) => {
-
 
     let invalidHandle = !_.isArray(handles) && typeof handles !== 'string';
     if( invalidHandle ){

@@ -117,10 +117,10 @@ program
         }
 
         if( has(prg,'country') ){
-            return CF.ratings({
+            return new CF.Ratings({
                 country: prg.country,
                 org: has(prg,'org')
-            });
+            }).show();
         }
 
         program.outputHelp();
@@ -156,6 +156,7 @@ program
         CF.cfdefault.countrs();
     });
 
+/*
 program
     .command('contests')
     .option('--running', 'for running contests')
@@ -171,7 +172,7 @@ program
             log('Also future');
         }
 
-    });
+    });*/
 
 
 program
@@ -201,7 +202,7 @@ program
                 : DEFAULT_ASYNC_LIMIT
         };
 
-        CF.sourcecode(options);
+        new CF.Sourcecode(options).download();
     });
 
 
@@ -216,13 +217,13 @@ program
     .action( (contestId,prg) => {
 
         if( has(prg,'country') ){
-            return CF.countrystandings({
+            return new CF.Countrystandings({
                 contestId: parseInt(contestId,10),
                 country: prg.country,
                 total: has(prg,'count')
                     ? prg.count
                     : 50
-            });
+            }).show();
         }
 
         let options = {
@@ -265,7 +266,7 @@ if( !program.args.length && has(program,'help') ){
 // https://github.com/tj/programer.js/issues/57
 //
 if (!program.args.length) {
-    figlet('CF CLI', function(err, data) {
+    figlet('Codeforces CLI',{ font: 'ANSI Shadow' }, (err, data) => {
         log('');
         log('');
         if(!err){

@@ -92,6 +92,7 @@ describe('Codeforces', function() {
                         sinon.stub(instanceSubmit, 'getCSRFToken');
                         sinon.stub(instanceSubmit, 'login');
                         sinon.stub(instanceSubmit, 'submitSolution');
+                        sinon.stub(CryptoJS.AES,'decrypt').returns('hashed');
                         sinon.stub(jsonfile, 'readFile');
                         sinon.stub(inquirer, 'prompt');
                         sinon.stub(helpers, 'checkPath').yields('error');
@@ -104,6 +105,7 @@ describe('Codeforces', function() {
                         instanceSubmit.getCSRFToken.restore();
                         instanceSubmit.login.restore();
                         instanceSubmit.submitSolution.restore();
+                        CryptoJS.AES.decrypt.restore();
                         jsonfile.readFile.restore();
                         inquirer.prompt.restore();
                         helpers.checkPath.restore();
@@ -131,6 +133,7 @@ describe('Codeforces', function() {
                         sinon.stub(instanceSubmit, 'getCSRFToken');
                         sinon.stub(instanceSubmit, 'login');
                         sinon.stub(instanceSubmit, 'submitSolution');
+                        sinon.stub(CryptoJS.AES,'decrypt').returns('hashed');
                         sinon.stub(jsonfile, 'readFile');
                         sinon.stub(inquirer, 'prompt');
                         sinon.stub(helpers, 'checkPath').yields({err: 'err'});
@@ -147,6 +150,7 @@ describe('Codeforces', function() {
                         instanceSubmit.getCSRFToken.restore();
                         instanceSubmit.login.restore();
                         instanceSubmit.submitSolution.restore();
+                        CryptoJS.AES.decrypt.restore();
                         jsonfile.readFile.restore();
                         inquirer.prompt.restore();
                         helpers.checkPath.restore();
@@ -173,6 +177,7 @@ describe('Codeforces', function() {
                     sinon.stub(instanceSubmit, 'getCSRFToken');
                     sinon.stub(instanceSubmit, 'login');
                     sinon.stub(instanceSubmit, 'submitSolution');
+                    sinon.stub(CryptoJS.AES,'decrypt').returns('hashed');
                     sinon.stub(jsonfile, 'readFile');
                     sinon.stub(inquirer, 'prompt');
                     sinon.stub(helpers, 'checkPath').yields(null);
@@ -185,6 +190,7 @@ describe('Codeforces', function() {
                     instanceSubmit.getCSRFToken.restore();
                     instanceSubmit.login.restore();
                     instanceSubmit.submitSolution.restore();
+                    CryptoJS.AES.decrypt.restore();
                     jsonfile.readFile.restore();
                     inquirer.prompt.restore();
                     helpers.checkPath.restore();
@@ -213,6 +219,7 @@ describe('Codeforces', function() {
                     sinon.stub(instanceSubmit, 'getCSRFToken');
                     sinon.stub(instanceSubmit, 'login');
                     sinon.stub(instanceSubmit, 'submitSolution');
+                    sinon.stub(CryptoJS.AES,'decrypt').returns('hashed');
                     sinon.stub(jsonfile, 'readFile');
                     sinon.stub(inquirer, 'prompt');
                     sinon.stub(helpers, 'checkPath').yields(null);
@@ -225,6 +232,7 @@ describe('Codeforces', function() {
                     instanceSubmit.getCSRFToken.restore();
                     instanceSubmit.login.restore();
                     instanceSubmit.submitSolution.restore();
+                    CryptoJS.AES.decrypt.restore();
                     jsonfile.readFile.restore();
                     inquirer.prompt.restore();
                     helpers.checkPath.restore();
@@ -253,6 +261,7 @@ describe('Codeforces', function() {
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields('called');
                     sinon.stub(instanceSubmit, 'login');
                     sinon.stub(instanceSubmit, 'submitSolution');
+                    sinon.stub(CryptoJS.AES,'decrypt').returns('hashed');
                     sinon.stub(jsonfile, 'readFile');
                     sinon.stub(inquirer, 'prompt').returns(Promise.resolve({handle: 'someHandle', password: 'pass'}));
                     sinon.stub(helpers, 'checkPath').yields(null);
@@ -264,6 +273,7 @@ describe('Codeforces', function() {
                     instanceSubmit.getCSRFToken.restore();
                     instanceSubmit.login.restore();
                     instanceSubmit.submitSolution.restore();
+                    CryptoJS.AES.decrypt.restore();
                     jsonfile.readFile.restore();
                     inquirer.prompt.restore();
                     helpers.checkPath.restore();
@@ -292,6 +302,7 @@ describe('Codeforces', function() {
                     sinon.stub(jsonfile, 'readFile').yields(new MyError('EPERM'));
                     sinon.stub(inquirer, 'prompt').returns(Promise.resolve({handle: 'some', password: 'some'}));
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields('called');
+                    sinon.stub(CryptoJS.AES,'decrypt').returns('hashed');
                     sinon.stub(instanceSubmit, 'login');
                     sinon.stub(instanceSubmit, 'submitSolution');
                     sinon.stub(helpers, 'checkPath').yields(null);
@@ -303,6 +314,7 @@ describe('Codeforces', function() {
                     instanceSubmit.getCSRFToken.restore();
                     instanceSubmit.login.restore();
                     instanceSubmit.submitSolution.restore();
+                    CryptoJS.AES.decrypt.restore();
                     jsonfile.readFile.restore();
                     inquirer.prompt.restore();
                     helpers.checkPath.restore();
@@ -326,6 +338,7 @@ describe('Codeforces', function() {
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields('called');
                     sinon.stub(instanceSubmit, 'login');
                     sinon.stub(instanceSubmit, 'submitSolution');
+                    sinon.stub(CryptoJS.AES,'decrypt').returns('hashed');
                     sinon.stub(jsonfile, 'readFile').yields(new MyError('Unknow'));
                     sinon.stub(inquirer, 'prompt').returns(Promise.resolve({handle: 'some'}));
                     sinon.stub(helpers, 'checkPath').yields(null);
@@ -337,6 +350,7 @@ describe('Codeforces', function() {
                     instanceSubmit.getCSRFToken.restore();
                     instanceSubmit.login.restore();
                     instanceSubmit.submitSolution.restore();
+                    CryptoJS.AES.decrypt.restore();
                     jsonfile.readFile.restore();
                     inquirer.prompt.restore();
                     helpers.checkPath.restore();
@@ -362,6 +376,7 @@ describe('Codeforces', function() {
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields('called');
                     sinon.stub(instanceSubmit, 'login');
                     sinon.stub(instanceSubmit, 'submitSolution');
+                    sinon.stub(CryptoJS.AES,'decrypt').returns('hashed');
                     sinon.stub(jsonfile, 'readFile').yields(new MyError('ENOENT'));
                     sinon.stub(inquirer, 'prompt').returns(Promise.resolve({handle: 'some'}));
                     sinon.stub(helpers, 'checkPath').yields(null);
@@ -373,6 +388,7 @@ describe('Codeforces', function() {
                     instanceSubmit.getCSRFToken.restore();
                     instanceSubmit.login.restore();
                     instanceSubmit.submitSolution.restore();
+                    CryptoJS.AES.decrypt.restore();
                     jsonfile.readFile.restore();
                     inquirer.prompt.restore();
                     helpers.checkPath.restore();
@@ -396,6 +412,7 @@ describe('Codeforces', function() {
                 before(function () {
                     instanceSubmit = new Submit({problemIndex: 'A', contestId: 10, codeFile: 'a.cpp'});
                     sinon.stub(helpers, 'checkPath').yields(null);
+                    sinon.stub(CryptoJS.AES,'decrypt').returns('hashed');
                     sinon.stub(jsonfile, 'readFile').yields(null, {noUser: 'adad'});
                     sinon.stub(inquirer, 'prompt').returns(Promise.resolve({handle: 'some', password: 'adad'}));
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields('getCSRFTokencalled');
@@ -407,6 +424,7 @@ describe('Codeforces', function() {
                     jsonfile.readFile.restore();
                     inquirer.prompt.restore();
                     instanceSubmit.getCSRFToken.restore();
+                    CryptoJS.AES.decrypt.restore();
                     helpers.log.restore();
                     process.stderr.write.restore();
                 });
@@ -426,6 +444,7 @@ describe('Codeforces', function() {
                 before(function () {
                     instanceSubmit = new Submit({problemIndex: 'A', contestId: 10, codeFile: 'a.cpp'});
                     sinon.stub(helpers, 'checkPath').yields(null);
+                    sinon.stub(CryptoJS.AES,'decrypt').returns('hashed');
                     sinon.stub(jsonfile, 'readFile').yields(null, {user: 'adad'});
                     sinon.stub(inquirer, 'prompt').returns(Promise.resolve({handle: 'some', password: 'adad'}));
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields('getCSRFTokencalled');
@@ -437,6 +456,7 @@ describe('Codeforces', function() {
                     jsonfile.readFile.restore();
                     inquirer.prompt.restore();
                     instanceSubmit.getCSRFToken.restore();
+                    CryptoJS.AES.decrypt.restore();
                     helpers.log.restore();
                     process.stderr.write.restore();
                 });
@@ -456,6 +476,7 @@ describe('Codeforces', function() {
                 before(function () {
                     instanceSubmit = new Submit({problemIndex: 'A', contestId: 10, codeFile: 'a.cpp'});
                     sinon.stub(helpers, 'checkPath').yields(null);
+                    sinon.stub(CryptoJS.AES,'decrypt').returns('hashed');
                     sinon.stub(jsonfile, 'readFile').yields(null, {user: 'adad', pass: 'some'});
                     sinon.stub(inquirer, 'prompt').returns(Promise.resolve({handle: 'some', password: 'adad'}));
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields('getCSRFTokencalled');
@@ -467,6 +488,7 @@ describe('Codeforces', function() {
                     jsonfile.readFile.restore();
                     inquirer.prompt.restore();
                     instanceSubmit.getCSRFToken.restore();
+                    CryptoJS.AES.decrypt.restore();
                     helpers.log.restore();
                     process.stderr.write.restore();
                 });
@@ -587,6 +609,7 @@ describe('Codeforces', function() {
                     sinon.stub(instanceSubmit, 'prepareInput').yields(null, { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields(null,'adad', { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'submitSolution').yields('submitSolutionError');
+                    sinon.stub(CryptoJS.AES,'encrypt').returns('hashed');
                     sinon.stub(request,'post').yields('postError');
                     sinon.stub(helpers,'log', function (text) {});
                     sinon.stub(process.stderr,'write');
@@ -596,6 +619,7 @@ describe('Codeforces', function() {
                     instanceSubmit.prepareInput.restore();
                     instanceSubmit.getCSRFToken.restore();
                     instanceSubmit.submitSolution.restore();
+                    CryptoJS.AES.encrypt.restore();
                     request.post.restore();
                     helpers.log.restore();
                     process.stderr.write.restore();
@@ -619,6 +643,7 @@ describe('Codeforces', function() {
                     sinon.stub(instanceSubmit, 'prepareInput').yields(null, { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields(null,'adad', { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'submitSolution').yields('submitSolutionError');
+                    sinon.stub(CryptoJS.AES,'encrypt').returns('hashed');
                     sinon.stub(request,'post').yields(null, { headers: {} }, {});
                     sinon.stub(helpers,'log', function (text) {});
                     sinon.stub(process.stderr,'write');
@@ -628,6 +653,7 @@ describe('Codeforces', function() {
                     instanceSubmit.prepareInput.restore();
                     instanceSubmit.getCSRFToken.restore();
                     instanceSubmit.submitSolution.restore();
+                    CryptoJS.AES.encrypt.restore();
                     request.post.restore();
                     helpers.log.restore();
                     process.stderr.write.restore();
@@ -652,7 +678,7 @@ describe('Codeforces', function() {
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields(null,'adad', { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'submitSolution').yields('submitSolutionError');
                     sinon.stub(request,'post').yields(null, { headers: { location: 'ad' } }, {});
-                    sinon.stub(CryptoJS.AES,'encrypt').yields('hashed');
+                    sinon.stub(CryptoJS.AES,'encrypt').returns('hashed');
                     sinon.stub(jsonfile,'writeFileSync');
                     sinon.stub(helpers,'log', function (text) {});
                     sinon.stub(process.stderr,'write');
@@ -688,7 +714,7 @@ describe('Codeforces', function() {
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields(null,'adad', { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'submitSolution').yields('submitSolutionError');
                     sinon.stub(request,'post').yields(null, { headers: { location: 'ad' } }, `<form><span class="for__password">CFdefaultError</span></form>`);
-                    sinon.stub(CryptoJS.AES,'encrypt').yields('hashed');
+                    sinon.stub(CryptoJS.AES,'encrypt').returns('hashed');
                     sinon.stub(jsonfile,'writeFileSync');
                     sinon.stub(helpers,'log', function (text) {});
                     sinon.stub(process.stderr,'write');

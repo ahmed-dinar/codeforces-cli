@@ -1,6 +1,6 @@
 'use strict';
 
-import { waterfall } from 'async';
+import waterfall from 'async/waterfall';
 import request from 'request';
 import has from 'has';
 import debug from 'debug';
@@ -78,6 +78,9 @@ export default class Submit {
     }
 
 
+    /**
+     * @param next
+     */
     submit(next) {
 
         let self = this;
