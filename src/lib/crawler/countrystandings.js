@@ -6,52 +6,48 @@ import cheerio from 'cheerio';
 import Table from 'cli-table2';
 import chalk from 'chalk';
 import _ from 'lodash';
-import { line } from 'cli-spinners';
 import ora from 'ora';
-import { whilst } from 'async';
+import whilst from 'async/whilst';
 import { log, logr, commonHeaders } from '../helpers';
 import countries from '../countries';
 
 var debugs = debug('CF:standings:c');
-var spinner = ora({ spinner: line });
+var spinner = ora({ spinner: 'line' });
 var GB = chalk.bold.green;
 var CB = chalk.bold.cyan;
 var RB = chalk.bold.red;
 
-
-/**
- *
- * @param options - { contestId, country }
+/****************************
+ * FIX
+ * check 702 contest, its weird
+ * ***************************
+ * @param {Number} contestId
+ * @param {String} country
+ * @param {Number} total
  */
-export default (options) => {
+export default ({ contestId = null, country = null, total = 50 } = {}) => {
 
-    if( !_.has(options,'contestId') || !_.has(options,'country') ){
-        throw new Error('contestId and country required');
+    let isInvalid = contestId === null || country === null || typeof country !== 'string';
+    if( isInvalid ){
+        throw new Error('contestId and country should not be null or empty.');
     }
 
-    let { contestId, country } = options;
-
     if( countries.indexOf(country) === -1 ){
-        logr('  Error: Invalid country.Please check and try again.');
+        logr(`  Error: '${country}' not found in supported country list.Please run 'cf country' to see all supported countries.`);
         return;
     }
 
     let headers = commonHeaders();
-
     let reqOptions = {
         uri: '',
         headers: headers
     };
 
     let table = new Table();
-    var total = _.has(options,'count')
-        ? options.count
-        : 50;
     var totalPage = 5;
     var count = 0;
     var found = 0;
     var page = 1;
-
     let contestName = '';
 
     log('');
@@ -62,7 +58,7 @@ export default (options) => {
         },
         (next) => {
 
-            reqOptions.uri = `http://codeforces.com/contest/${contestId}/standings//page/${page}`;
+            reqOptions.uri = `http://codeforces.com/contest/${contestId}/standings/page/${page}`;
 
             debugs(`Fetching from page ${page}...`);
             spinner.text = `Fetching standings - page ${page}...`;
@@ -75,8 +71,7 @@ export default (options) => {
                 }
 
                 let { statusCode } = response;
-
-                if( statusCode!==200 ){
+                if( statusCode !== 200 ){
                     return next('HTTP error');
                 }
 
@@ -101,9 +96,9 @@ export default (options) => {
                 _.forEach(standings, (standing) => {
 
                     let allData = $(standing)
-				.parent()
-				.parent()
-				.children();
+                        .parent()
+                        .parent()
+                        .children();
                     let data = [(count+1).toString()];
 
                     _.forEach(allData, (info, key) => {

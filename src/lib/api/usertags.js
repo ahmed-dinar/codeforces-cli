@@ -7,14 +7,13 @@ import has from 'has';
 import forEach from 'lodash/forEach';
 import Table from 'cli-table2';
 import chalk from 'chalk';
-import { line } from 'cli-spinners';
 import ora from 'ora';
 import qs from 'qs';
 import waterfall from 'async/waterfall';
 import { log, logr } from '../helpers';
 import tags from './tags';
 
-var spinner = ora({ spinner: line });
+var spinner = ora({ spinner: 'line' });
 const debugs = debug('CF:usertags');
 const CB = chalk.cyan.bold;
 const PROGRESS_WIDTH = 20;

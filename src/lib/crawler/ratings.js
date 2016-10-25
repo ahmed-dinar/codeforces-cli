@@ -5,14 +5,15 @@ import debug from 'debug';
 import cheerio from 'cheerio';
 import Table from 'cli-table2';
 import chalk from 'chalk';
-import _ from 'lodash';
+import { forEach, replace, map } from 'lodash';
+import has from 'has';
 import qs from 'qs';
-import { line } from 'cli-spinners';
 import ora from 'ora';
 import { log, logr, commonHeaders } from '../helpers';
+import countries from '../countries';
 
+var spinner = ora({ spinner: 'line' });
 var debugs = debug('CF:standings:c');
-var spinner = ora({ spinner: line });
 var GB = chalk.bold.green;
 var CB = chalk.bold.cyan;
 var RB = chalk.bold.red;
@@ -23,15 +24,20 @@ var RB = chalk.bold.red;
  */
 export default (options) => {
 
-    if( !_.has(options,'country') ){
-        logr('  country required');
-        return;
+    if( !has(options,'country') ){
+        throw new Error('country required');
     }
 
     let { country } = options;
+
+    if( countries.indexOf(country) === -1 ){
+        logr('Invalid country.Please check and try again.');
+        return;
+    }
+
     let withOrg = false;
 
-    if( _.has(options,'org') && options.org ){
+    if( has(options,'org') && options.org ){
         withOrg = true;
     }
 
@@ -71,16 +77,16 @@ export default (options) => {
             head: [ GB('#') ,GB('Rank'), GB('Who'), GB('Title'), GB('Contests'), GB('Rating') ]
         });
 
-        _.forEach(ratings, (rating, key) => {
+        forEach(ratings, (rating, key) => {
 
             if(key === 0){ return; } //skip table header
 
             rating = $(rating).children();
             let info = [ (key).toString() ];
 
-            _.forEach(rating, function (data, indx) {
+            forEach(rating, function (data, indx) {
 
-                let inf = _.replace( $(data).text(), /\s\s+/g , '' ); //remove spaces and \n\r
+                let inf = replace( $(data).text(), /\s\s+/g , '' ); //remove spaces and \n\r
                 let title = '';
 
                 if( indx === 1 ){
@@ -88,7 +94,7 @@ export default (options) => {
                     title = $(data)
 						.find($('.rated-user'))
 						.attr('title');
-                    title = _.replace(title, inf, '');
+                    title = replace(title, inf, '');
 
                     if(!withOrg){
                         if( title.toLowerCase().indexOf('grandmaster') !== -1 ){
@@ -133,7 +139,7 @@ function getOrg(table, country) {
         json: true
     };
 
-    let handles = _.map(table, (info) => {
+    let handles = map(table, (info) => {
         return info[2];
     }).join(';');
 
@@ -169,7 +175,7 @@ function getOrg(table, country) {
 
             spinner.succeed();
 
-            _.forEach(body.result, (data,key) => {
+            forEach(body.result, (data,key) => {
                // table[key].push(`${data.firstName} ${data.lastName}`);
               //  table[key].push(data.maxRating);
                // table[key].push(data.contribution);

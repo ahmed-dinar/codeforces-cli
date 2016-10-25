@@ -11,7 +11,10 @@
     "coverage": "./node_modules/.bin/nyc report --reporter=text-lcov | coveralls",
     "cov-html": "./node_modules/.bin/nyc report --reporter=html",
     "lint": "./node_modules/.bin/eslint -c .eslintrc src/**",
-    "single": "./node_modules/.bin/nyc ./node_modules/.bin/mocha  --compilers js:babel-register \"tests/api/test_tags.js\" & npm run cov-html"
+    "single": "./node_modules/.bin/nyc ./node_modules/.bin/mocha  --compilers js:babel-register \"tests/crawler/test_submit.js\" & npm run cov-html"
+  },
+  "nyc": {
+    "include": ["src/lib/crawler/*.js", "src/lib/api/*.js", "src/lib/utils/*.js", "tests/**/*.js"]
   },
   "repository": {
     "type": "git",
@@ -57,7 +60,6 @@
     "blessed-contrib": "^3.5.5",
     "chalk": "^1.1.3",
     "cheerio": "^0.22.0",
-    "cli-spinners": "^0.3.0",
     "cli-table2": "^0.2.0",
     "commander": "^2.9.0",
     "crypto-js": "^3.1.7",

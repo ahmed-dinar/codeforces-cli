@@ -7,11 +7,10 @@ import ora from 'ora';
 import _ from 'lodash';
 import Table from 'cli-table2';
 import chalk from 'chalk';
-import { line } from 'cli-spinners';
 import { log, logr } from '../helpers';
 
 var debugs = debug('CF:tags');
-var spinner = ora({ spinner: line });
+var spinner = ora({ spinner: 'line' });
 
 /**
  * Get all tags and quantity

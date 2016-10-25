@@ -6,12 +6,11 @@ import Table from 'cli-table2';
 import chalk from 'chalk';
 import _ from 'lodash';
 import qs from 'qs';
-import { line } from 'cli-spinners';
 import ora from 'ora';
 import { log, logr } from '../helpers';
 
 var debugs = debug('CF:userinfo');
-var spinner = ora({ spinner: line });
+var spinner = ora({ spinner: 'line' });
 var GB = chalk.bold.green;
 
 

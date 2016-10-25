@@ -10,7 +10,6 @@ import request from 'request';
 import debug from 'debug';
 import chalk from 'chalk';
 import Table from 'cli-table2';
-import { line } from 'cli-spinners';
 import ora from 'ora';
 import { waterfall, whilst } from 'async';
 import verdicts from '../verdicts';
@@ -18,7 +17,7 @@ import { log, logr, getHomeDir, validateEmpty, clear } from '../helpers';
 
 
 var debugs = debug('CF:submission');
-var spinner = ora({ spinner: line });
+var spinner = ora({ spinner: 'line' });
 var GN = chalk.green;
 var GB = chalk.bold.green;
 var RB = chalk.bold.red;

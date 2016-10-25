@@ -6,7 +6,7 @@ var program = require('commander');
 import figlet from 'figlet';
 import has from 'has';
 import { version } from '../../../package.json';
-import * as Codeforces from '../../..';
+import * as CF from '../../..';
 import { log, logr } from '../../lib/helpers';
 
 var DEFAULT_DELAY = 5000;
@@ -41,7 +41,7 @@ program
                 : 0
         };
 
-        Codeforces.submission(options);
+        CF.submission(options);
     });
 
 
@@ -53,6 +53,7 @@ program
     .option('-w, --watch', 'watch submission status live')
     .option('-c, --count <total>', 'total live submission status to display [max 10]')
     .option('--delay <delay>', 'refreshing delay of live submission status [in millisecond]')
+    .option('--gym', 'gym problem submit')
     .description('submit solution')
     .action( (cid,pnum,codeFile,prg) => {
 
@@ -81,14 +82,15 @@ program
             logout: logout,
             totalRuns: total,
             delay: delay,
-            watch: has(prg,'watch')
+            watch: has(prg,'watch'),
+            gym: has(prg,'gym')
         };
 
-        if( has(prg,'lang') ){
-            options.language = prg.lang;
+        if( has(prg,'language') ){
+            options['language'] = prg.language;
         }
 
-        Codeforces.submit(options);
+        new CF.Submit(options).submit();
     });
 
 
@@ -96,7 +98,7 @@ program
     .command('stat <handle>')
     .description('user tags status')
     .action( (handle) => {
-        Codeforces.usertags({ handle: handle });
+        CF.usertags({ handle: handle });
     });
 
 
@@ -111,11 +113,11 @@ program
 
         if( has(prg,'user') ){
             let noChart = prg.parent.rawArgs.indexOf('--no-chart') !== -1;
-            return Codeforces.userrating(prg.user,noChart);
+            return new CF.Userrating(prg.user,noChart).getRating();
         }
 
         if( has(prg,'country') ){
-            return Codeforces.ratings({
+            return CF.ratings({
                 country: prg.country,
                 org: has(prg,'org')
             });
@@ -129,21 +131,21 @@ program
     .command('tags')
     .description('all tags and problem quantity')
     .action( () => {
-        Codeforces.tags();
+        CF.tags();
     });
 
 program
     .command('lang')
     .description('all supported languages and typeId')
     .action( () => {
-        Codeforces.cfdefault.langs();
+        CF.cfdefault.langs();
     });
 
 program
     .command('ext')
     .description('all supported extensions and language name')
     .action( () => {
-        Codeforces.cfdefault.exts();
+        CF.cfdefault.exts();
     });
 
 
@@ -151,7 +153,7 @@ program
     .command('country')
     .description('all supported country')
     .action( () => {
-        Codeforces.cfdefault.countrs();
+        CF.cfdefault.countrs();
     });
 
 program
@@ -176,7 +178,7 @@ program
     .command('info <handles>')
     .description('user info')
     .action( (handles) => {
-        Codeforces.userinfo(handles);
+        CF.userinfo(handles);
     });
 
 
@@ -199,7 +201,7 @@ program
                 : DEFAULT_ASYNC_LIMIT
         };
 
-        Codeforces.sourcecode(options);
+        CF.sourcecode(options);
     });
 
 
@@ -214,10 +216,10 @@ program
     .action( (contestId,prg) => {
 
         if( has(prg,'country') ){
-            return Codeforces.countrystandings({
+            return CF.countrystandings({
                 contestId: parseInt(contestId,10),
                 country: prg.country,
-                count: has(prg,'count')
+                total: has(prg,'count')
                     ? prg.count
                     : 50
             });
@@ -238,7 +240,7 @@ program
             options.handles = prg.handles;
         }
 
-        Codeforces.standings(options);
+        CF.standings(options);
     });
 
 
@@ -246,7 +248,7 @@ program.parse(process.argv);
 
 /*
 if( !program.args.length && has(program,'help') ){
-    figlet('Codeforces CLI', function(err, data) {
+    figlet('CF CLI', function(err, data) {
         log('');
         log('');
         if(!err){
@@ -263,7 +265,7 @@ if( !program.args.length && has(program,'help') ){
 // https://github.com/tj/programer.js/issues/57
 //
 if (!program.args.length) {
-    figlet('Codeforces CLI', function(err, data) {
+    figlet('CF CLI', function(err, data) {
         log('');
         log('');
         if(!err){

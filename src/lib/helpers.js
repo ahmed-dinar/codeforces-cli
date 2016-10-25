@@ -10,12 +10,10 @@ var debugs = debug('helpers:checkPath');
  * console.error()
  * @param text
  */
-/* istanbul ignore next */
 export function logr(text) {
     if( typeof text === 'string' ){
         text = chalk.red.bold(`  Error: ${text}`);
     }
-    console.log(text);
     console.error(text);
 }
 
@@ -24,7 +22,6 @@ export function logr(text) {
  * console.log()
  * @param text
  */
-/* istanbul ignore next */
 export function log(text) {
     console.log(text);
 }
@@ -34,16 +31,14 @@ export function log(text) {
  * Detect platform
  * @returns {boolean}
  */
-/* istanbul ignore next */
 export function isUnix() {
     return process.platform.indexOf('win32') === -1;
 }
 
 
 /**
- *
+ * Clear console
  */
-/* istanbul ignore next */
 export function clear() {
     process.stdout.write('\x1B[H\x1B[J');
 }
@@ -53,7 +48,6 @@ export function clear() {
  * Get system home dir  ( Windows C:/Users/{user}, Unix ~/  )
  * @returns {*}
  */
-/* istanbul ignore next */
 export function getHomeDir() {
     return process.env[isUnix() ? 'HOME' : 'USERPROFILE'];
 }
@@ -65,7 +59,6 @@ export function getHomeDir() {
  * @param {boolean} isFile - if true then check if it is a file
  * @param callback
  */
-/* istanbul ignore next */
 export function checkPath(directory, isFile, callback) {
 
     if( typeof isFile === 'function' ){
@@ -108,7 +101,6 @@ export function checkPath(directory, isFile, callback) {
  * @param {String} fileName
  * @returns {string|*}
  */
-/* istanbul ignore next */
 export function getCWD(fileName) {
     return path.join(path.resolve(process.cwd()), fileName);
 }
@@ -119,7 +111,6 @@ export function getCWD(fileName) {
  * @param inpt
  * @returns {boolean}
  */
-/* istanbul ignore next */
 export function validateEmpty(inpt) {
     return inpt.length > 0;
 }
@@ -128,10 +119,8 @@ export function validateEmpty(inpt) {
 
 /**
  * Common headers for crawler
- *
  * @returns {{Host: string, Upgrade-Insecure-Requests: number, User-Agent: string, Accept: string, Accept-Language: string}}
  */
-/* istanbul ignore next */
 export function commonHeaders() {
     return {
         'Host': 'codeforces.com',

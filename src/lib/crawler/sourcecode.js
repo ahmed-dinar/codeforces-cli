@@ -9,7 +9,6 @@ import mkdirp from 'mkdirp';
 import JSONStream from 'JSONStream';
 import chalk from 'chalk';
 import _ from 'lodash';
-import { line } from 'cli-spinners';
 import ora from 'ora';
 import languages from '../languages';
 import { waterfall, each, eachLimit, parallel } from 'async';
@@ -17,7 +16,7 @@ import { log, logr, checkPath, commonHeaders } from '../helpers';
 
 
 var debugs = debug('CF:sourcecode');
-var spinner = ora({ spinner: line });
+var spinner = ora({ spinner: 'line' });
 var GB = chalk.green.bold;
 
 

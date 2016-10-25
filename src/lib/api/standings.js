@@ -7,13 +7,12 @@ import JSONStream from 'JSONStream';
 import Table from 'cli-table2';
 import chalk from 'chalk';
 import { forEach, split , isArray , join, map } from 'lodash';
-import { line } from 'cli-spinners';
 import ora from 'ora';
 import { duration } from 'moment';
 import { log, logr } from '../helpers';
 
 var debugs = debug('CF:standings');
-var spinner = ora({ spinner: line });
+var spinner = ora({ spinner: 'line' });
 var GB = chalk.green.bold;
 var CB = chalk.cyan.bold;
 var RB = chalk.red.bold;

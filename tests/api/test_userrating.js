@@ -5,8 +5,7 @@ var chai = require('chai');
 var sinonChai = require('sinon-chai');
 
 var helpers = require('../../src/lib/helpers');
-import userrating from '../../src/lib/api/userrating';
-var userratingfunc = require('../../src/lib/api/userrating');
+import Userrating from '../../src/lib/api/Userrating';
 
 chai.use(sinonChai);
 
@@ -28,12 +27,12 @@ var mockBody = {
 };
 
 describe('Codeforces', function() {
-    describe('#userrating', function() {
+    describe('#Userrating', function() {
         describe('[core]', function() {
 
             it('should throw error when parameter is empty', function(done) {
                 expect(function () {
-                    userrating();
+                    new Userrating().getRating();
                 }).to.throw(Error);
                 done();
             });
@@ -41,15 +40,15 @@ describe('Codeforces', function() {
             it('should throw error when handle is not a string', function(done) {
 
                 expect(function () {
-                    userrating({});
+                    new Userrating({}).getRating();
                 }).to.throw(Error);
 
                 expect(function () {
-                    userrating(null);
+                    new Userrating(null).getRating();
                 }).to.throw(Error);
 
                 expect(function () {
-                    userrating(undefined);
+                    new Userrating(undefined).getRating();
                 }).to.throw(Error);
 
                 done();
@@ -60,8 +59,10 @@ describe('Codeforces', function() {
             describe('{No chart}', function() {
 
                 var logCalled;
+                var instanceOf;
 
                 beforeEach(function(){
+                    instanceOf = new Userrating('Ahmed_Dinar', true);
                     logCalled = false;
                     sinon.stub(helpers, 'log', function () { logCalled = true; });
                     sinon.stub(process.stderr,'write'); //disable spinner
@@ -78,13 +79,13 @@ describe('Codeforces', function() {
 
                 it('should call console.log when response is successful', function(done){
                     expect(logCalled).to.be.false;
-                    userrating('Ahmed_Dinar', true);
+                    instanceOf.getRating();
                     expect(logCalled).to.be.true;
                     done();
                 });
 
                 it('should call request', function(done){
-                    userrating('Ahmed_Dinar', true);
+                    instanceOf.getRating();
                     expect(request.get.called).to.be.true;
                     done();
                 });
@@ -92,10 +93,12 @@ describe('Codeforces', function() {
             describe('{Chart}', function() {
 
                 var chartCalled;
+                var instanceOf;
 
                 beforeEach(function(){
+                    instanceOf = new Userrating('Ahmed_Dinar');
                     chartCalled = false;
-                    sinon.stub(userratingfunc, 'showLineChart', function () {
+                    sinon.stub(instanceOf, 'showLineChart', function () {
                        chartCalled = true;
                     });
                     sinon.stub(process.stderr,'write'); //disable spinner
@@ -105,20 +108,20 @@ describe('Codeforces', function() {
                 });
 
                 afterEach(function(){
-                    userratingfunc.showLineChart.restore();
+                    instanceOf.showLineChart.restore();
                     process.stderr.write.restore();
                     request.get.restore();
                 });
 
                 it('should call request', function(done){
-                    userratingfunc.userrating('Ahmed_Dinar');
+                    instanceOf.getRating();
                     expect(request.get.called).to.be.true;
                     done();
                 });
 
                 it('should call showchart', function(done){
                     expect(chartCalled).to.be.false;
-                    userratingfunc.userrating('Ahmed_Dinar');
+                    instanceOf.getRating();
                     expect(chartCalled).to.be.true;
                     done();
                 });
@@ -130,8 +133,10 @@ describe('Codeforces', function() {
             describe('{Request error}', function() {
 
                 var logCalled;
+                var instanceOf;
 
                 beforeEach(function(){
+                    instanceOf = new Userrating('Ahmed_Dinar', true);
                     logCalled = false;
                     sinon.stub(helpers, 'logr', function () { logCalled = true; });
                     sinon.stub(process.stderr,'write'); //disable spinner
@@ -147,14 +152,14 @@ describe('Codeforces', function() {
                 });
 
                 it('should call request', function(done){
-                    userrating('Ahmed_Dinar', true);
+                    instanceOf.getRating();
                     expect(request.get.called).to.be.true;
                     done();
                 });
 
                 it('should call console.error when request failed', function(done){
                     expect(logCalled).to.be.false;
-                    userrating('Ahmed_Dinar', true);
+                    instanceOf.getRating();
                     expect(logCalled).to.be.true;
                     done();
                 });
@@ -163,8 +168,10 @@ describe('Codeforces', function() {
             describe('{HTTP error}', function() {
 
                 var logCalled;
+                var instanceOf;
 
                 beforeEach(function(){
+                    instanceOf = new Userrating('Ahmed_Dinar', true);
                     logCalled = false;
                     sinon.stub(helpers, 'logr', function () { logCalled = true; });
                     sinon.stub(process.stderr,'write'); //disable spinner
@@ -182,14 +189,14 @@ describe('Codeforces', function() {
                 });
 
                 it('should call request', function(done){
-                    userrating('Ahmed_Dinar', true);
+                    instanceOf.getRating();
                     expect(request.get.called).to.be.true;
                     done();
                 });
 
                 it('should call console.error when HTTP response status not 200', function(done){
                     expect(logCalled).to.be.false;
-                    userrating('Ahmed_Dinar', true);
+                    instanceOf.getRating();
                     expect(logCalled).to.be.true;
                     done();
                 });
@@ -198,8 +205,10 @@ describe('Codeforces', function() {
             describe('{Invalid JSON}', function() {
 
                 var logCalled;
+                var instanceOf;
 
                 beforeEach(function(){
+                    instanceOf = new Userrating('Ahmed_Dinar', true);
                     logCalled = false;
                     sinon.stub(helpers, 'logr', function () { logCalled = true; });
                     sinon.stub(process.stderr,'write'); //disable spinner
@@ -217,14 +226,14 @@ describe('Codeforces', function() {
                 });
 
                 it('should call request', function(done){
-                    userrating('Ahmed_Dinar', true);
+                    instanceOf.getRating();
                     expect(request.get.called).to.be.true;
                     done();
                 });
 
                 it('should call console.error when content is not json', function(done){
                     expect(logCalled).to.be.false;
-                    userrating('Ahmed_Dinar', true);
+                    instanceOf.getRating();
                     expect(logCalled).to.be.true;
                     done();
                 });
@@ -233,8 +242,10 @@ describe('Codeforces', function() {
             describe('{API error}', function() {
 
                 var logCalled;
+                var instanceOf;
 
                 beforeEach(function(){
+                    instanceOf = new Userrating('Ahmed_Dinar', true);
                     logCalled = false;
                     sinon.stub(helpers, 'logr', function () { logCalled = true; });
                     sinon.stub(process.stderr,'write'); //disable spinner
@@ -252,14 +263,14 @@ describe('Codeforces', function() {
                 });
 
                 it('should call request', function(done){
-                    userrating('Ahmed_Dinar', true);
+                    instanceOf.getRating();
                     expect(request.get.called).to.be.true;
                     done();
                 });
 
                 it('should call console.error when API is not OK', function(done){
                     expect(logCalled).to.be.false;
-                    userrating('Ahmed_Dinar', true);
+                    instanceOf.getRating();
                     expect(logCalled).to.be.true;
                     done();
                 });
