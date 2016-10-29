@@ -15,9 +15,9 @@ import countries from '../countries';
 
 var spinner = ora({ spinner: 'line' });
 var debugs = debug('CF:standings:c');
-var GB = chalk.bold.green;
-var CB = chalk.bold.cyan;
-var RB = chalk.bold.red;
+const GB = chalk.bold.green;
+const CB = chalk.bold.cyan;
+const RB = chalk.bold.red;
 
 
 export default class Ratings {
@@ -35,14 +35,18 @@ export default class Ratings {
 
         this.error = null;
         if (countries.indexOf(country) === -1) {
-            this.error = `Invalid country '${country}'.Please run command 'cf country' to see supported country list.`;
+            this.error = `Invalid country '${country}'.Please run 'cf country' to see supported country list.`;
+            return;
         }
 
         this.country = country;
         this.withOrg = org;
     }
 
-    /**
+
+    /******* TO-DO ************************************************
+     *   Add count and offset (and may be categorize by CF colors?)
+     **************************************************************
      * @param callback
      * @returns {*}
      */
@@ -50,16 +54,11 @@ export default class Ratings {
 
         let self = this;
         let isCallback = typeof callback === 'function';
-        if( self.error !== null ){
-            if( isCallback ){
-                return callback(self.error);
-            }
-            logr(self.error);
-            return;
+        if( self.error ){
+            return isCallback ? callback(self.error) : logr(self.error);
         }
 
-        debugs(`Fetching ratings of ${self.country}...`);
-        spinner.text = `fetching top 200 user ratings of ${self.country}...`;
+        spinner.text = `fetching top few user ratings of ${self.country}...`;
         spinner.start();
 
         waterfall([
@@ -78,7 +77,7 @@ export default class Ratings {
 
                     let {statusCode} = response;
                     if (statusCode !== 200) {
-                        return next('HTTP error');
+                        return next(`HTTP failed with status ${statusCode}`);
                     }
 
                     var $ = cheerio.load(body, {decodeEntities: true});
@@ -186,16 +185,12 @@ export default class Ratings {
 
                 let {statusCode} = response;
                 if (statusCode !== 200) {
-                    if( has(body, 'comment') ){
-                        return callback(body.comment);
-                    }
-                    return callback('HTTP error [org]');
+                    return callback( has(body, 'comment') ? body.comment : `HTTP failed with status ${statusCode}`);
                 }
 
                 if (body.status !== 'OK') {
                     return callback(body.comment);
                 }
-
                 spinner.succeed();
 
                 forEach(body.result, (data, key) => {

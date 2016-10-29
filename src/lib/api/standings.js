@@ -54,119 +54,103 @@ export default ({ contestId = null, count = 200, unofficial = false, from = 1, h
     spinner.start();
 
     /* istanbul ignore next */
-    request
-        .get(reqOptions)
-        .on('error', (err) => {
+    let reqStream = request.get(reqOptions);
+    let jsonStream = reqStream.pipe( JSONStream.parse('result.rows.*') );
 
-            debugs('Failed: Request error');
-            debugs(err);
+    reqStream.on('error', (err) => {
+        debugs('Failed: Request error');
+        logr(err);
+    });
 
-            logr(err);
-        })
-        .on('complete', () => {
+    reqStream.on('complete', () => {
+        debugs('parsing completed');
 
-            debugs('parsing completed');
+        if( responseCode !== 200 ){
+            spinner.fail();
+            return logr(apiMsg || `HTTP Failed with status ${responseCode}`);
+        }
 
-            if( responseCode !== 200 ){
-			    log('a ' + responseCode);
-                spinner.fail();
-                if( apiMsg !== null ){
-                    return logr(apiMsg);
-                }
-                return logr('Failed HTTP');
-            }
+        if( contentType.indexOf('application/json;') === -1 ){
+            spinner.fail();
+            return logr('Failed.Invalid data.');
+        }
 
-            if( contentType.indexOf('application/json;') === -1 ){
-                spinner.fail();
-                return logr('Failed.Not valid data.');
-            }
+        if( apiFailed ){
+            spinner.fail();
+            return logr(apiMsg || 'Unknown error.[Report?]');
+        }
+        spinner.succeed();
 
-            if( apiFailed ){
-                spinner.fail();
-                return logr(apiMsg);
-            }
-
-            spinner.succeed();
-
-            let head = [ GB('Rank'), GB('Who'), GB('Points'), GB('Hacks') ];
-            forEach(problemSet, prb => {
-                head.push( GB(prb.index) );
-            });
-            table.options.head = head;
-
-            log('');
-            log( CB(` Title: ${contestInfo.name}`) );
-            log( CB(` Type : ${contestInfo.type}`) );
-            log( CB(` Phase: ${contestInfo.phase}`) );
-            log(table.toString());
-
-        })
-        .on('response', (response) => {
-
-            responseCode = response.statusCode;
-            contentType = response.headers['content-type'];
-
-            log(responseCode);
-
-            debugs(`HTTP Code: ${responseCode}`);
-            debugs(`Content-Type: ${contentType}`);
-        })
-        .pipe( JSONStream.parse('result.rows.*') )
-        .on('header', (data) => {
-
-            debugs(`API Status: ${data.status}`);
-
-            if( data.status !== 'OK' ){
-                apiFailed = true;
-                apiMsg = data.comment;
-                return;
-            }
-            contestInfo = data.contest;
-            problemSet = data.problems;
-        })
-        .on('data', (data) => {
-
-            let hacks = '';
-
-            if( data.successfulHackCount > 0 ){
-                hacks = `+${data.successfulHackCount.toString()}`;
-            }
-
-            if( data.unsuccessfulHackCount > 0 ){
-                hacks = `${hacks} : -${data.unsuccessfulHackCount.toString()}`;
-            }
-
-			/**********TO-DO*************/
-			//  handle Multiple members (team)
-            //
-            let chunk = [
-                data.rank.toString(),
-                CB(data.party.members[0].handle),
-                data.points.toString(),
-                hacks
-            ];
-
-
-            let results = map(data.problemResults, (result) => {
-
-                if( result.points === 0 && result.rejectedAttemptCount > 0 ){
-                    return RB(`-${result.rejectedAttemptCount.toString()}`);
-                }
-                else if( result.points === 0 && result.rejectedAttemptCount === 0 ){
-                    return '';
-                }
-
-                let subSecond = duration(result.bestSubmissionTimeSeconds, 'seconds');
-                let h = parseInt(subSecond.hours(),10);
-                let s = parseInt(subSecond.minutes(),10);
-                let subTime = `${Math.floor(h/10)}${h%10}:${Math.floor(s/10)}${s%10}`;
-
-                return ` ${result.points.toString()}\n${subTime}`;
-            });
-
-            table.push(chunk.concat(results));
+        let head = [ GB('Rank'), GB('Who'), GB('Points'), GB('Hacks') ];
+        forEach(problemSet, prb => {
+            head.push( GB(prb.index) );
         });
+        table.options.head = head;
+
+        log('');
+        log( CB(` Title: ${contestInfo.name}`) );
+        log( CB(` Type : ${contestInfo.type}`) );
+        log( CB(` Phase: ${contestInfo.phase}`) );
+        log(table.toString());
+    });
+
+    reqStream.on('response', (response) => {
+        responseCode = response.statusCode;
+        contentType = response.headers['content-type'];
+
+        debugs(`HTTP Code: ${responseCode}`);
+        debugs(`Content-Type: ${contentType}`);
+    });
+
+    jsonStream.on('header', (data) => {
+        debugs(`API Status: ${data.status}`);
+
+        if( data.status !== 'OK' ){
+            apiFailed = true;
+            apiMsg = data.comment;
+            return;
+        }
+        contestInfo = data.contest;
+        problemSet = data.problems;
+    });
+
+    jsonStream.on('data', (data) => {
+        let hacks = '';
+
+        if( data.successfulHackCount > 0 ){
+            hacks = `+${data.successfulHackCount.toString()}`;
+        }
+
+        if( data.unsuccessfulHackCount > 0 ){
+            hacks = `${hacks} : -${data.unsuccessfulHackCount.toString()}`; // +x : -y
+        }
+
+        /**********TO-DO*************/
+		//  handle Multiple members (team)
+        //
+        let chunk = [data.rank.toString(), CB(data.party.members[0].handle), data.points.toString(), hacks];
+
+        let results = map(data.problemResults, (result) => {
+
+            if( result.points === 0 && result.rejectedAttemptCount > 0 ){
+                return RB(`-${result.rejectedAttemptCount.toString()}`);
+            }
+            else if( result.points === 0 && result.rejectedAttemptCount === 0 ){
+                return '';
+            }
+
+            let subSecond = duration(result.bestSubmissionTimeSeconds, 'seconds');
+            let h = parseInt(subSecond.hours(),10);
+            let s = parseInt(subSecond.minutes(),10);
+            let subTime = `${Math.floor(h/10)}${h%10}:${Math.floor(s/10)}${s%10}`;
+
+            return ` ${result.points.toString()}\n${subTime}`;
+        });
+
+        table.push(chunk.concat(results));
+    });
 };
+
 
 /**
  * Generate API url from given parameters
@@ -190,6 +174,7 @@ function generateUrl(options) {
         handles = split(handles,',');
         param['handles'] = join(handles,';');
     }
+    //else invalid handles..may be throw? currently ignore
 
     let sp = qs.stringify(param,{ encode: false });
 

@@ -96,7 +96,7 @@ export default class Submit {
             },
             self.getCSRFToken,
             self.login,
-            self.getCSRFToken,
+          //  self.getCSRFToken, //ok great, same csrf token working for both login and submit!
             self.submitSolution
         ], (err, res) => {
 
@@ -116,8 +116,7 @@ export default class Submit {
                     spinner.fail();
                     return;
                 }
-                logr(err);
-                return;
+                return logr(err);
             }
 
             /* istanbul ignore next */
@@ -254,8 +253,6 @@ export default class Submit {
                 // Ask for handle and password
                 //
                 inquirer.prompt(credentials).then((answers) => {
-
-
                     options.handle = answers.handle;
                     options.password = answers.password;
 
@@ -301,13 +298,8 @@ export default class Submit {
                 return callback('token not found');
             }
 
-            debugs('Csrf token found!');
+            debugs(`Csrf token found! ${csrf_token}`);
 
-            // TO-DO?
-            // Next form is resistration form.This idea works only for two form
-            // and hey, in this module we do not need anymore form
-            // but need to keep this idea and improve!
-            //
             options.form = options.nextForm;
             spinner.succeed();
 
@@ -395,7 +387,7 @@ export default class Submit {
             debugs('Successfully logged in');
             spinner.succeed();
 
-            return callback(null, options);
+            return callback(null, csrf_token, options);
         });
     }
 
@@ -471,8 +463,6 @@ export default class Submit {
                 //something wrong!
                 return callback('Error: Submission failed.Please check your options.');
             }
-
-            debugs('Solution submitted!');
 
             spinner.succeed();
             spinner.text = chalk.bold.green(`Submitted at ${location.date}`);

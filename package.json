@@ -14,7 +14,12 @@
     "single": "./node_modules/.bin/nyc ./node_modules/.bin/mocha  --compilers js:babel-register \"tests/crawler/test_ratings.js\" & npm run cov-html"
   },
   "nyc": {
-    "include": ["src/lib/crawler/*.js", "src/lib/api/*.js", "src/lib/utils/*.js", "tests/**/*.js"]
+    "include": [
+      "src/lib/crawler/*.js",
+      "src/lib/api/*.js",
+      "src/lib/utils/*.js",
+      "tests/**/*.js"
+    ]
   },
   "repository": {
     "type": "git",

@@ -133,7 +133,7 @@ describe('Codeforces',function () {
                     new Countrystandings({ contestId: 10, country: 'Bangladesh', total: 1 }).show(function (err) {
                         expect(request.get.called).to.be.true;
                         expect(helpers.logr.called).to.be.false;
-                        expect(err).to.equal(`HTTP error`);
+                        expect(err).to.equal(`HTTP failed with status 404`);
                         done();
                     });
                 });
@@ -184,7 +184,7 @@ describe('Codeforces',function () {
                 it('should request call 5 times', function (done) {
                     new Countrystandings({ contestId: 10, country: 'Bangladesh', total: 1 }).show(function (err) {
                         expect(request.get.called).to.be.true;
-                        expect(request.get.callCount).to.equal(5);
+                        expect(request.get.callCount).to.equal(2);
                         expect(err).to.be.null;
                         done();
                     });
@@ -211,7 +211,7 @@ describe('Codeforces',function () {
                 it('should request call 5 times and call log', function (done) {
                     new Countrystandings({ contestId: 10, country: 'Bangladesh', total: 1 }).show();
                     expect(request.get.called).to.be.true;
-                    expect(request.get.callCount).to.equal(5);
+                    expect(request.get.callCount).to.equal(2);
                     expect(helpers.log.called).to.be.true;
                     done();
                 });

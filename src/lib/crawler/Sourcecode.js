@@ -11,13 +11,13 @@ import chalk from 'chalk';
 import has from 'has';
 import ora from 'ora';
 import languages from '../languages';
-import { waterfall, each, eachLimit, parallel } from 'async';
+import { waterfall, eachLimit, series, eachSeries } from 'async';
 import { log, logr, checkPath, commonHeaders } from '../helpers';
 
 
 var debugs = debug('CF:sourcecode');
 var spinner = ora({ spinner: 'line' });
-var GB = chalk.green.bold;
+const GB = chalk.green.bold;
 
 const TIME_OUT = 60000; //1 minute
 var headers = commonHeaders();
@@ -36,7 +36,7 @@ export default class Sourcecode {
     constructor({handle = null, limit = 10, withProblem = false, dir = '.'} = {}) {
 
         if (handle === null || typeof handle != 'string') {
-            throw new Error(`handle should not be null or empty`);
+            throw new Error('handle should not be null or empty');
         }
 
         this.options = { handle, withProblem, limit, dir };
@@ -66,8 +66,7 @@ export default class Sourcecode {
                 totalSubmissions = submissions.length;
 
                 if (self.options.withProblem) {
-                    eachLimit(submissions, self.options.limit, self.getResource.bind(self, dir), next);
-                    return;
+                    return eachLimit(submissions, self.options.limit, self.getResource.bind(self, dir), next);
                 }
 
                 eachLimit(submissions, self.options.limit, self.getOnlySource.bind(self, dir), next);
@@ -99,7 +98,6 @@ export default class Sourcecode {
     createOutputDir(options, callback) {
 
         let {dir, handle} = options;
-
         waterfall([
             (next) => {
                 if (dir !== '.') {
@@ -115,7 +113,6 @@ export default class Sourcecode {
                 else {
                     dir = path.join(dir, handle);
                 }
-
 
                 spinner.text = `creating directory ${dir}`;
                 spinner.start();
@@ -159,85 +156,86 @@ export default class Sourcecode {
         spinner.text = 'fetching submissions..';
         spinner.start();
 
-        request
-            .get(reqOptions)
-            .on('error', (err) => {
+        let reqStream = request.get(reqOptions);
+        let jsonStream = reqStream.pipe(JSONStream.parse('result.*'));
 
-                debugs('Failed: Request error');
-                debugs(err);
+        reqStream.on('error', (err) => {
+            debugs('Failed: Request error');
+            debugs(err);
 
-                return callback(err);
-            })
-            .on('complete', () => {
+            return callback(err);
+        });
 
-                debugs('parsing completed');
 
-                if (responseCode !== 200) {
-                    if (apiMsg !== null) {
-                        return callback(apiMsg);
-                    }
-                    return callback('Failed HTTP');
-                }
+        reqStream.on('complete', () => {
+            debugs('parsing completed');
 
-                if (contentType.indexOf('application/json;') === -1) {
-                    return callback('Failed.Not valid data.');
-                }
+            if (responseCode !== 200) {
+                return callback(apiMsg || `HTTP failed with status ${responseCode}`);
+            }
 
-                if (apiFailed) {
-                    return callback(apiMsg);
-                }
+            if (contentType.indexOf('application/json;') === -1) {
+                return callback('Failed.Not valid data.');
+            }
 
-                spinner.stop();
-                spinner.text = `total accepted submission: ${acSubmissions.length}`;
-                spinner.succeed();
+            if (apiFailed) {
+                return callback(apiMsg);
+            }
 
-                return callback(null, dir, acSubmissions);
-            })
-            .on('response', (response) => {
+            spinner.stop();
+            spinner.text = `total accepted submission: ${acSubmissions.length}`;
+            spinner.succeed();
 
-                responseCode = response.statusCode;
-                contentType = response.headers['content-type'];
+            return callback(null, dir, acSubmissions);
+        });
 
-                debugs(`HTTP Code: ${responseCode}`);
-                debugs(`Content-Type: ${contentType}`);
-            })
-            .pipe(JSONStream.parse('result.*'))
-            .on('header', (data) => {
 
-                debugs(`API Status: ${data.status}`);
+        reqStream.on('response', (response) => {
+            debugs(`HTTP Code: ${responseCode}`);
+            debugs(`Content-Type: ${contentType}`);
 
-                if (data.status !== 'OK') {
-                    apiFailed = true;
-                    apiMsg = data.comment;
-                }
-            })
-            .on('data', (data) => {
+            responseCode = response.statusCode;
+            contentType = response.headers['content-type'];
+        });
 
-                // `data.contestId < 10000` is for detecting gym.Need authorization
-                if (has(data, 'problem') && data.verdict === 'OK' && data.contestId < 10000) {
 
-                    let {problem, id, contestId, programmingLanguage} = data;
-                    let {index} = problem;
-                    let problemId = `${contestId}${index}`;
-                    let root = contestId > 10000
+        jsonStream.on('header', (data) => {
+            debugs(`API Status: ${data.status}`);
+
+            if (data.status !== 'OK') {
+                apiFailed = true;
+                apiMsg = data.comment;
+            }
+        });
+
+
+        jsonStream.on('data', (data) => {
+
+                // `data.contestId < 10000` is for detecting gym.Useless now.Need authorization
+            if (has(data, 'problem') && data.verdict === 'OK' && data.contestId < 10000) {
+
+                let {problem, id, contestId, programmingLanguage} = data;
+                let {index} = problem;
+                let problemId = `${contestId}${index}`;
+                let root = contestId > 10000
                         ? 'gym'
                         : 'contest'; //currently gym not working. need authorization
-                    let submissionUrl = `http://codeforces.com/${root}/${contestId}/submission/${id}`;
-                    let problemUrl = `http://codeforces.com/${root}/${contestId}/problem/${index}`;
+                let submissionUrl = `http://codeforces.com/${root}/${contestId}/submission/${id}`;
+                let problemUrl = `http://codeforces.com/${root}/${contestId}/problem/${index}`;
 
-                    acSubmissions.push({
-                        submissionId: id,
-                        contestId: contestId,
-                        problemIndex: index,
-                        problemId: problemId,
-                        submissionUrl: submissionUrl,
-                        problemUrl: withProblem
+                acSubmissions.push({
+                    submissionId: id,
+                    contestId: contestId,
+                    problemIndex: index,
+                    problemId: problemId,
+                    submissionUrl: submissionUrl,
+                    problemUrl: withProblem
                             ? problemUrl
                             : null,
-                        language: programmingLanguage
-                    });
-                }
-            });
+                    language: programmingLanguage
+                });
+            }
+        });
     }
 
     /**
@@ -253,16 +251,14 @@ export default class Sourcecode {
         let outputPath = path.join(dir, `${problemId}`);
         let ext = languages.getExtension(language);
 
-        parallel([
+        series([
             (next) => {
-
                 log(GB(`  fetching sourecode ${problemId}_${submissionId}`));
 
                 let filePath = path.join(outputPath, `${problemId}_${submissionId}.${ext}`);
                 self.getSourceCode(submissionUrl, filePath, `code ${problemId}_${submissionId}`, next);
             },
             (next) => {
-
                 log(GB(`  fetching problem ${problemId}`));
 
                 let filePath = path.join(outputPath, `${problemId}.html`);
@@ -281,7 +277,7 @@ export default class Sourcecode {
                 return callback();
             }
 
-            each([data[0], data[1]], self.writeOutputs, callback);
+            eachSeries([data[0], data[1]], self.writeOutputs, callback);
         });
     }
 
@@ -299,9 +295,8 @@ export default class Sourcecode {
         let outputPath = path.join(dir, `${problemId}`);
         let ext = languages.getExtension(language);
 
-        parallel([
+        series([
             (next) => {
-
                 log(GB(`  fetching sourecode ${problemId}_${submissionId}`));
 
                 let filePath = path.join(outputPath, `${problemId}_${submissionId}.${ext}`);

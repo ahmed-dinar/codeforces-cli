@@ -222,7 +222,7 @@ describe('Codeforces', function() {
                             expect(jsonfile.writeFileSync.called).to.be.false;
                             expect(request.get.called).to.be.true;
                             expect(helpers.logr.called).to.false;
-                            expect(err).to.equal('HTTP error');
+                            expect(err).to.equal('HTTP failed with status 404');
                             done();
                         });
                     }});
@@ -242,7 +242,7 @@ describe('Codeforces', function() {
                             expect(jsonfile.writeFileSync.called).to.be.false;
                             expect(request.get.called).to.be.true;
                             expect(helpers.logr.called).to.false;
-                            expect(err).to.equal('HTTP error');
+                            expect(err).to.equal('HTTP failed with status 404');
                             done();
                         });
                     }});

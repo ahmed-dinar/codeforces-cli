@@ -68,7 +68,7 @@ describe('Codeforces',function () {
                     new Ratings({ country: 'invlid' }).show(function (err,result) {
                         expect(request.get.called).to.be.false;
                         expect(helpers.logr.called).to.be.false;
-                        expect(err).to.equal(`Invalid country 'invlid'.Please run command 'cf country' to see supported country list.`);
+                        expect(err).to.equal(`Invalid country 'invlid'.Please run 'cf country' to see supported country list.`);
                         done();
                     });
                 });
@@ -145,7 +145,7 @@ describe('Codeforces',function () {
                     instnecRating.show(function (err,result) {
                         expect(request.get.called).to.be.true;
                         expect(helpers.logr.called).to.be.false;
-                        expect(err).to.equal('HTTP error');
+                        expect(err).to.equal('HTTP failed with status 404');
                         expect(instnecRating.getOrg.called).to.be.false;
                         done();
                     });
@@ -267,7 +267,7 @@ describe('Codeforces',function () {
                         expect(request.get.called).to.be.true;
                         expect(helpers.logr.called).to.be.false;
                         expect(helpers.log.called).to.be.false;
-                        expect(err).to.equal('HTTP error [org]');
+                        expect(err).to.equal('HTTP failed with status 404');
                         done();
                     });
                 });

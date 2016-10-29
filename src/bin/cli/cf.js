@@ -17,9 +17,31 @@ program
     .version(version)
     .usage('[options] [command]');
 
+program.on('--help', () => {
+    log('  All options:');
+    log('    -r, --remember                save/update handle');
+    log('    -c, --count                   total items to fetch and show');
+    log('    -w, --watch                   watch submission status live');
+    log('    -p, --problem                 also download problem statement');
+    log('    -u, --user <handle>           codeforces user handle');
+    log('    -l, --language <language-id>  programming language id of the solution');
+    log('    -d, --directory <directory>   directory to save solutions');
+    log('    --logout                      delete saved password');
+    log('    --gym                         gym problem submit');
+    log('    --no-chart                    disable showing chart of user rating');
+    log('    --org                         show Organization of users');
+    log('    --unofficial                  unofficial standings');
+    log('    --handles <handles>           comma separated codeforces handles');
+    log('    --offset <offset>             offset of the items to fetch from');
+    log('    --limit <download-limit>      maximum number of simultaneous downloads');
+    log('    --country <country-name>      country name for rating');
+    log('    --delay <delay>               refreshing delay of live submission status [in millisecond]');
+    log('    --contest <contestId>         specific contest submissions');
+});
+
 program
     .command('runs')
-    .option('-r, --remember', 'save handle for future')
+    .option('-r, --remember', 'save/update handle')
     .option('-c, --count <total>', 'total submission status to display')
     .option('-w, --watch', 'watch submission status live')
     .option('--delay <delay>', 'refreshing delay of live submission status [in millisecond]')
@@ -104,10 +126,10 @@ program
 
 program
     .command('rating')
-    .option('-u, --user <handle>', 'user handle for rating')
+    .option('-u, --user <handle>', 'codeforces user handle')
     .option('--country <country-name>', 'country name for rating')
-    .option('--no-chart', 'disable showing chart for user')
-    .option('--org', 'show Organization for country rating')
+    .option('--no-chart', 'disable showing chart of user rating')
+    .option('--org', 'show Organization of users')
     .description('user ratings')
     .action( (prg) => {
 
@@ -129,7 +151,7 @@ program
 
 program
     .command('tags')
-    .description('all tags and problem quantity')
+    .description('all tags distribution')
     .action( () => {
         CF.tags();
     });
@@ -187,7 +209,7 @@ program
     .command('solutions <handle>')
     .option('-d, --directory <directory>','directory to save solutions')
     .option('-p, --problem','also download problem statement')
-    .option('--limit <async-limit>','limit async task')
+    .option('--limit <download-limit>','maximum number of simultaneous downloads')
     .description('user solution download')
     .action( (handle,prg) => {
 
@@ -209,7 +231,7 @@ program
 program
     .command('standings <contestId>')
     .description('contest standings')
-    .option('--handles <handles>', 'handles for standings')
+    .option('--handles <handles>', 'comma separated codeforces handles')
     .option('--country <country-name>', 'country name for standings')
     .option('-c, --count <total>', 'total standings to display')
     .option('--offset <offset>', 'standings offset')
@@ -266,7 +288,7 @@ if( !program.args.length && has(program,'help') ){
 // https://github.com/tj/programer.js/issues/57
 //
 if (!program.args.length) {
-    figlet('Codeforces CLI',{ font: 'ANSI Shadow' }, (err, data) => {
+    figlet('Codeforces CLI', (err, data) => {
         log('');
         log('');
         if(!err){
@@ -279,19 +301,18 @@ if (!program.args.length) {
 
     //warn aboud invalid programs
     var validprograms = program.commands.map(function(cmd){
-        return cmd.name;
+        return cmd._name;
     });
 
-    var invalidprograms = program.args.filter(function(cmd){
-        //if program executed it will be an object and not a string
-        return (typeof cmd === 'string' && validprograms.indexOf(cmd) === -1 );
+    var invalidprograms = program.args.map(function(cmd){
+        return cmd._name;
     });
-
-
 
 
     if (invalidprograms.length) {
-       // log('\n [ERROR] - Invalid program: "%s". See "--help" for a list of available programs.\n', invalidprograms.join(', '));
+        log('');
+        log(`   [ERROR] - Invalid command: ${invalidprograms.join(', ')}. run "cf --help" for a list of available commands.`);
+        log('');
     }
 }
 */

@@ -14,7 +14,7 @@ import { log, logr } from '../helpers';
 import tags from './tags';
 
 var spinner = ora({ spinner: 'line' });
-const debugs = debug('CF:usertags');
+var debugs = debug('CF:usertags');
 const CB = chalk.cyan.bold;
 const PROGRESS_WIDTH = 20;
 
@@ -69,94 +69,90 @@ function getUserTags(handle, callback) {
 
     let apiFailed= false;
     let apiMsg = null;
-    let responseCode = '404';
+    let responseCode = 404;
     let contentType = '';
     let totalSubmissions = 0;
     let totalAccepted = 0;
-
     let userTags = new Map();
 
     spinner.text = 'Fetching user tags...';
     spinner.start();
 
-    request
-        .get(reqOptions)
-        .on('error', (err) => {
+    let reqStream = request.get(reqOptions);
+    let jsonStream = reqStream.pipe( JSONStream.parse('result.*') );
 
-            debugs('Failed: Request error');
-            debugs(err);
+    reqStream.on('error', (err) => {
+        debugs('Failed: Request error');
+        debugs(err);
 
-            return callback(err);
-        })
-        .on('complete', () => {
+        return callback(err);
+    });
 
-            debugs('parsing completed');
+    reqStream.on('complete', () => {
+        debugs('parsing completed');
 
-            if( responseCode !== 200 ){
-                spinner.fail();
-                if( apiMsg !== null ){
-                    return callback(apiMsg);
+        if( responseCode !== 200 ){
+            spinner.fail();
+            return callback(apiMsg || `HTTP failed with status ${responseCode}`);
+        }
+
+        if( contentType.indexOf('application/json;') === -1 ){
+            spinner.fail();
+            return callback('Failed.Invalid data.');
+        }
+
+        if( apiFailed ){
+            spinner.fail();
+            return callback(apiMsg);
+        }
+        spinner.succeed();
+
+        return callback(null, userTags, totalSubmissions, totalAccepted);
+    });
+
+
+    reqStream.on('response', (response) => {
+        debugs(`HTTP Code: ${responseCode}`);
+        debugs(`Content-Type: ${contentType}`);
+
+        responseCode = response.statusCode;
+        contentType = response.headers['content-type'];
+    });
+
+
+    jsonStream.on('header', (data) => {
+        debugs(`API Status: ${data.status}`);
+
+        if( data.status !== 'OK' ){
+            apiFailed = true;
+            apiMsg = data.comment;
+        }
+    });
+
+
+    jsonStream.on('data', (data) => {
+        totalSubmissions++;
+
+        if( has(data,'problem') && data.verdict === 'OK' ) {
+            totalAccepted++;
+
+            let prob = `${data.problem.contestId}${data.problem.index}`;
+            let problemTags = data.problem.tags;
+
+            forEach(problemTags, (tag) => {
+                if( userTags.has(tag) ){
+                    let mySet = userTags.get(tag);
+                    mySet.add(prob);
+                    userTags.set(tag, mySet);
                 }
-                return callback('Connection error.Failed.');
-            }
-
-            if( contentType.indexOf('application/json;') === -1 ){
-                spinner.fail();
-                return callback('Failed.Invalid data.');
-            }
-
-            if( apiFailed ){
-                spinner.fail();
-                return callback(apiMsg);
-            }
-
-            spinner.succeed();
-
-            return callback(null, userTags, totalSubmissions, totalAccepted);
-        })
-        .on('response', (response) => {
-
-            responseCode = response.statusCode;
-            contentType = response.headers['content-type'];
-
-            debugs(`HTTP Code: ${responseCode}`);
-            debugs(`Content-Type: ${contentType}`);
-        })
-        .pipe( JSONStream.parse('result.*') )
-        .on('header', (data) => {
-
-            debugs(`API Status: ${data.status}`);
-
-            if( data.status !== 'OK' ){
-                apiFailed = true;
-                apiMsg = data.comment;
-            }
-        })
-        .on('data', (data) => {
-
-            totalSubmissions++;
-
-            if( has(data,'problem') && data.verdict === 'OK' ) {
-
-                totalAccepted++;
-
-                let prob = `${data.problem.contestId}${data.problem.index}`;
-                let problemTags = data.problem.tags;
-
-                forEach(problemTags, (tag) => {
-                    if( userTags.has(tag) ){
-                        let mySet = userTags.get(tag);
-                        mySet.add(prob);
-                        userTags.set(tag, mySet);
-                    }
-                    else{
-                        let mySet = new Set();
-                        mySet.add(prob);
-                        userTags.set(tag,mySet);
-                    }
-                });
-            }
-        });
+                else{
+                    let mySet = new Set();
+                    mySet.add(prob);
+                    userTags.set(tag,mySet);
+                }
+            });
+        }
+    });
 }
 
 

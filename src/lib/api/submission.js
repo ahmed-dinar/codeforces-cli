@@ -23,11 +23,9 @@ var GB = chalk.bold.green;
 var RB = chalk.bold.red;
 
 var TIME_OUT = 30000; //30 seconds
-var STATUS_DELAY = 5000; //4 seconds
+var STATUS_DELAY = 5000; //5 seconds
 
 
-/**
- *
  /**
  * @param {Number} count - total submisison to fetch
  * @param {Boolean} remember - if true, save handle in config file
@@ -82,11 +80,10 @@ function readConfig(options, next) {
     jsonfile.readFile(options.config, (err, obj) => {
 
         let askHandle = false;
-
         if( err ){
 
             if( err.code === 'EPERM' ){
-                throw new Error('Permission denied config file.');
+                throw new Error(`Permission denied.Can't read config file '${options.config}'`);
             }
 
             if( err.code !== 'ENOENT' ){
@@ -96,7 +93,6 @@ function readConfig(options, next) {
             debugs('Config file not found');
             askHandle = true;
         }
-
         spinner.stop();
 
         if( askHandle || !has(obj,'user') ){
@@ -107,17 +103,14 @@ function readConfig(options, next) {
                 validate: validateEmpty
             }];
 
-            inquirer.prompt(credentials).then( (answer) => {
-
+            return inquirer.prompt(credentials).then( (answer) => {
                 options.handle = answer.handle;
                 jsonfile.writeFileSync(options.config, { user: options.handle });//save handle
 
                 return next(null, options);
             });
-            return;
         }
 
-        debugs('Handle found in config file');
         spinner.text = `Saved handle found '${obj.user}'`;
         spinner.succeed();
 
@@ -151,7 +144,6 @@ function getSubmission(options, next) {
     spinner.text = 'Fetching submissions..';
     spinner.start();
 
-
     request
         .get(reqOptions, (error, response, body) => {
 
@@ -161,10 +153,7 @@ function getSubmission(options, next) {
 
             let { statusCode } = response;
             if( statusCode!==200 ){
-                if( has(body,'comment') ){
-                    return next(body.comment);
-                }
-                return next('HTTP error');
+                return next( has(body,'comment') ? body.comment : `HTTP failed with status ${statusCode}`);
             }
 
             if( body.status !== 'OK' ){
@@ -213,11 +202,8 @@ function watchRun(options, next) {
                     }
 
                     let { statusCode } = response;
-                    if( statusCode!==200 ){
-                        if( has(body,'comment') ){
-                            return callback(body.comment);
-                        }
-                        return callback('HTTP error');
+                    if( statusCode !== 200 ){
+                        return next( has(body,'comment') ? body.comment : `HTTP failed with status ${statusCode}`);
                     }
 
                     if( body.status !== 'OK' ){
@@ -231,22 +217,15 @@ function watchRun(options, next) {
                     // Still testing, Wait x seconds and get status again
                     //
                     if( keepWatching ) {
-                        setTimeout(() => {
+                        return setTimeout(() => {
                             callback();
                         }, STATUS_DELAY);
-                        return;
                     }
 
                     return callback();
                 });
         },
-        (err) => {
-            if(err){
-                debugs('Error while watching');
-                return next(err);
-            }
-            return next();
-        }
+        next
     );
 }
 
@@ -273,9 +252,7 @@ function generateTable(runs, isWatch = false){
         let passed = parseInt(passedTestCount,10);
         who = author.members[0].handle;
 
-        debugs(run.testset);
-
-        if( verdict === undefined ){
+        if( verdict === undefined || typeof verdict != 'string' ){
             done = false;
             verdict = chalk.white.bold('In queue');
         }

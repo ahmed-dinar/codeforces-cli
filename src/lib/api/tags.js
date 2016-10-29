@@ -4,6 +4,7 @@ import JSONStream from 'JSONStream';
 import debug from 'debug';
 import request from 'request';
 import ora from 'ora';
+import has from 'has';
 import _ from 'lodash';
 import Table from 'cli-table2';
 import chalk from 'chalk';
@@ -14,9 +15,7 @@ var spinner = ora({ spinner: 'line' });
 
 /**
  * Get all tags and quantity
- *
- * @param callback
- *      if callback given, return tags, otherwise print
+ * @param callback - if callback given, return tags, otherwise print
  */
 export default (callback) => {
 
@@ -25,146 +24,106 @@ export default (callback) => {
         json: true
     };
 
-    //
-    // Request validators
-    //
-    let apiFailed= false;
-    let apiMsg = '';
-    let responseCode = '404';
+    let apiMsg = null;
+    let responseCode = 404;
     let contentType = '';
-
     let allTags = {};
+    let isCallback = typeof callback === 'function';
 
     spinner.text = 'Fetching all tags...';
     spinner.start();
 
-    /* istanbul ignore next */
-    request
-        .get(reqOptions)
-        .on('error', (err) => {
+    let reqStream = request.get(reqOptions);
+    let jsonStream = reqStream.pipe( JSONStream.parse('result.problems.*') );
 
-            debugs('Failed: Request error');
-            debugs(err);
+    reqStream.on('error', (err) => {
+        debugs('Failed: Request error');
+        debugs(err);
 
-            if( typeof callback === 'function'){
-                return callback(err);
-            }
-
-            logr('Request Failed.Bug?');
-
-        })
-        .on('complete', () => {
-
-            /**
-             *  Very messy code, need to update callback logic for clean code (??)
-             */
-
-            debugs('parsing completed');
-
-            let isCallback = typeof callback === 'function';
-
-            if( responseCode !== 200 ){
-                spinner.fail();
-                if(isCallback){
-                    return callback(`Failed, HTTP status: ${responseCode}`);
-                }
-                logr(`Failed, HTTP status: ${responseCode}`);
-                return;
-            }
-
-            //
-            // Content not json, request failed
-            //
-            if( contentType.indexOf('application/json;') === -1 ){
-                spinner.fail();
-                if(isCallback){
-                    return callback('Failed.Not valid data.');
-                }
-                logr('Failed.Not valid data.');
-                return;
-            }
-
-            //
-            // API rejects the request
-            //
-            if( apiFailed ){
-                spinner.fail();
-                if(isCallback){
-                    return callback(apiMsg);
-                }
-                logr(apiMsg);
-                return;
-            }
-
-            spinner.succeed();
-
-            //
-            // If callback given, return tags
-            //
-            if(isCallback){
-                return callback(null,allTags);
-            }
+        return isCallback ? callback(err) : logr('Request connection Failed.');
+    });
 
 
-            //
-            // Sort tags by problem count, need to update if better way
-            //
-            allTags = _
+    reqStream.on('complete', () => {
+        debugs('parsing completed');
+
+        if( responseCode !== 200 ){
+            spinner.fail();
+            apiMsg = apiMsg || `HTTP Failed with status: ${responseCode}`;
+            return isCallback ? callback(apiMsg) : logr(apiMsg);
+        }
+
+        // Content not json, request failed
+        if( contentType.indexOf('application/json;') === -1 ){
+            spinner.fail();
+            apiMsg = 'Failed.Not valid data.';
+            return isCallback ? callback(apiMsg) : logr(apiMsg);
+        }
+
+        // API rejects the request
+        if( apiMsg ){
+            spinner.fail();
+            return isCallback ? callback(apiMsg) : logr(apiMsg);
+        }
+        spinner.succeed();
+        
+        if(isCallback){
+            return callback(null,allTags);
+        }
+        
+        // Sort tags by problem count, need to update if better way
+        allTags = _
                 .chain(allTags)
 				.map((value, key) => {
-    return {key, value};
-})
+                    return {key, value};
+                })
 				.orderBy('value')
                 .reverse()
                 .keyBy('key')
                 .mapValues('value')
                 .value();
 
-            let table = new Table({
-                head: [ chalk.green('TAG'), chalk.green('Total Problem')]
-            });
-
-            _.forEach(allTags, (value, key) => {
-                table.push([key, value]);
-            });
-
-            log('');
-            log(chalk.bold.green(` Total tag: ${table.length}`));
-            log(table.toString());
-        })
-        .on('response', (response) => {
-
-            responseCode = response.statusCode;
-            contentType = response.headers['content-type'];
-
-            debugs(`HTTP Code: ${responseCode}`);
-            debugs(`Content-Type: ${contentType}`);
-        })
-        .pipe( JSONStream.parse('result.problems.*') )
-        .on('header', (data) => {
-
-            debugs(`API Status: ${data.status}`);
-
-            if( data.status !== 'OK' ){
-                apiFailed = true;
-                apiMsg = data.comment;
-            }
-        })
-        .on('data', (data) => {
-
-            // debugs('data received');
-
-            //
-            // If request failed, tags may not exist
-            //
-            if( _.has(data,'tags') ) {
-                _.forEach(data.tags, (tag) => {
-                    if (_.has(allTags, tag)) {
-                        allTags[tag]++;
-                    } else {
-                        allTags[tag] = 1;
-                    }
-                });
-            }
+        let table = new Table({
+            head: [ chalk.green('TAG'), chalk.green('Total Problem')]
         });
+
+        _.forEach(allTags, (value, key) => {
+            table.push([key, value]);
+        });
+
+        log('');
+        log(chalk.bold.green(` Total tag: ${table.length}`));
+        log(table.toString());
+    });
+
+
+    reqStream.on('response', (response) => {
+        debugs(`HTTP Code: ${responseCode}`);
+        debugs(`Content-Type: ${contentType}`);
+
+        responseCode = response.statusCode;
+        contentType = response.headers['content-type'];
+    });
+
+
+    jsonStream.on('header', (data) => {
+        debugs(`API Status: ${data.status}`);
+
+        if( data.status !== 'OK' ){
+            apiMsg = data.comment || 'Unknown Error?';
+        }
+    });
+
+
+    jsonStream.on('data', (data) => {
+        if( has(data,'tags') ) {
+            _.forEach(data.tags, (tag) => {
+                if (has(allTags, tag)) {
+                    allTags[tag]++;
+                } else {
+                    allTags[tag] = 1;
+                }
+            });
+        }
+    });
 };

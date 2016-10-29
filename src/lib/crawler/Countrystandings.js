@@ -13,16 +13,13 @@ import countries from '../countries';
 
 var debugs = debug('CF:standings:c');
 var spinner = ora({ spinner: 'line' });
-var GB = chalk.bold.green;
-var CB = chalk.bold.cyan;
-var RB = chalk.bold.red;
+const TIME_OUT = 30000;
+const GB = chalk.bold.green;
+const CB = chalk.bold.cyan;
+const RB = chalk.bold.red;
 
 
-/*
- *********** TO-DO / FIX *********************************
- *   check 702 contest, its not match with table headers
- * *******************************************************
- */
+
 export default class Countrystandings {
 
     /*
@@ -30,7 +27,7 @@ export default class Countrystandings {
      * @param {String} country
      * @param {Number} total
      */
-    constructor({contestId = null, country = null, total = 50} = {}) {
+    constructor({contestId = null, country = null, total = 50, offset = 1} = {}) {
 
         let isInvalid = contestId === null || country === null || !Number.isInteger(contestId) || typeof country !== 'string';
         if (isInvalid) {
@@ -40,11 +37,13 @@ export default class Countrystandings {
         this.error = null;
         if (countries.indexOf(country) === -1) {
             this.error = `'${country}' not found in supported country list.Please run 'cf country' to see all supported countries.`;
+            return;
         }
 
         this.contestId = contestId;
         this.country = country;
         this.total = total;
+        this.offset = offset;
     }
 
 
@@ -55,7 +54,7 @@ export default class Countrystandings {
     show(callback){
 
         let self = this;
-        if( self.error !== null ){
+        if( self.error ){
             if( typeof callback === 'function' ){
                 return callback(self.error);
             }
@@ -67,11 +66,12 @@ export default class Countrystandings {
         let reqOptions = {
             uri: '',
             headers: headers,
-            timeout: 30000
+            timeout: TIME_OUT
         };
 
+        let head;
         let table = new Table();
-        var totalPage = 5;
+        var totalPage = 2;
         var count = 0;
         var found = 0;
         var page = 1;
@@ -85,12 +85,13 @@ export default class Countrystandings {
             },
             (next) => {
 
-                reqOptions.uri = `http://codeforces.com/contest/${self.contestId}/standings/page/${page}`;
-
-                debugs(`Fetching from page ${page}...`);
-                spinner.text = `Fetching standings - page ${page}...`;
+                let remain = (self.total - found) < 0
+                    ? 0
+                    : (self.total - found);
+                spinner.text = `Fetching standings - ${found} participants found,${remain} remaining...`;
                 spinner.start();
 
+                reqOptions.uri = `http://codeforces.com/contest/${self.contestId}/standings/page/${page}`;
                 request.get(reqOptions, (err, response, body) => {
 
                     if (err) {
@@ -99,26 +100,13 @@ export default class Countrystandings {
 
                     let {statusCode} = response;
                     if (statusCode !== 200) {
-                        return next('HTTP error');
+                        return next(`HTTP failed with status ${statusCode}`);
                     }
-
                     spinner.stop();
 
                     var $ = cheerio.load(body, {decodeEntities: true});
-                    let standings = $('table.standings .standings-flag');
-
-                    standings = _.filter(standings, (stdng) => {
-                        return $(stdng).attr('title') === self.country;
-                    });
-
+                    let standings = $(`table.standings .standings-flag[title="${self.country}"]`);
                     found += standings.length;
-                    let remain = (self.total - found) < 0
-                        ? 0
-                        : (self.total - found);
-
-                    spinner.text = `${standings.length} users found in page ${page} [${remain} remaining]`;
-                    spinner.start();
-                    spinner.succeed();
 
                     _.forEach(standings, (standing) => {
 
@@ -148,6 +136,9 @@ export default class Countrystandings {
                                     else if (val.indexOf('-') !== -1) {
                                         val = RB(val);
                                     }
+                                    else{
+                                        val = chalk.bold.white(val);
+                                    }
                                     break;
                                 default:
                                     if (val.indexOf(':') !== -1) {
@@ -165,6 +156,7 @@ export default class Countrystandings {
                     });
 
                     if (page === 1) {
+
                         contestName = _.replace($('.contest-name a').text(), /\s\s+/g, '');
                         let pg = $('.page-index');
                         let indxes = pg.length;
@@ -173,8 +165,19 @@ export default class Countrystandings {
                             totalPage = parseInt($(pg).attr('pageindex'), 10);
                             debugs(`Total page: ${totalPage}`);
                         }
-                    }
 
+                        let tabHeads = $('table.standings tr')[0];
+                        head = _.map( $(tabHeads).children(), (heads) => {
+                            let name = _.replace( $(heads).text() , /\s\s+/g, '');
+                            if( name === '#' ){
+                                name = 'Rank';
+                            }
+                            else if( name.length > 1 && self.hasDigit(name) ){
+                                name = self.splitPenalty(name, 1);
+                            }
+                            return GB(name);
+                        });
+                    }
                     page++;
                     return next();
                 });
@@ -197,18 +200,13 @@ export default class Countrystandings {
                     return;
                 }
 
-                let totalProblem = table[0].length - 5;
-                let problemChar = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-                let head = [GB('#'), GB('Rank'), GB('Who'), GB('#'), GB('*')];
+                let colWidths = [ null, ...(_.map(head, (hd,key) => { //bad practice? who cares! eslint, is that you??
+                    return key == 1 ? 30 : null;
+                }))];
 
-                let problemNames = _
-                    .slice(problemChar, 0, totalProblem)
-                    .map(x => {
-                        return GB(x);
-                    });
-
-                head = head.concat(problemNames);
-                table.options.head = head;
+                table.options.head = [ GB('#'), ...head ];
+                table.options.colWidths = colWidths;
+                table.options.wordWrap = true;
 
                 log('');
                 log(CB(`Contest: ${contestName}`));
@@ -228,5 +226,14 @@ export default class Countrystandings {
     splitPenalty(value, index) {
         /* istanbul ignore next */
         return ` ${value.substring(0, index)}\n${value.substring(index)}`;
+    }
+
+
+    /**
+     * Check if a string contains any digit
+     * @param val
+     */
+    hasDigit(val) {
+        return val.match(/\d+/g) != null;
     }
 }

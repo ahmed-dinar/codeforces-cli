@@ -5,6 +5,7 @@ import ora from 'ora';
 import Table from 'cli-table2';
 import chalk from 'chalk';
 import qs from 'qs';
+import has from 'has';
 import forEach from 'lodash/forEach';
 import * as contrib from 'blessed-contrib';
 import blessed from 'blessed';
@@ -50,33 +51,28 @@ export default class Userrating {
 
             if (err) {
                 spinner.fail();
-                logr('Failed [Request]');
-                return;
+                return logr('Failed [Request]');
             }
 
-            if (response.statusCode !== 200) {
+            let {statusCode} = response;
+            if (statusCode !== 200) {
                 spinner.fail();
-                logr('Failed HTTP');
-                return;
+                return logr( has(body,'comment') ? body.comment : `HTTP Failed with status ${statusCode}`);
             }
 
             let contentType = response.headers['content-type'];
             if (contentType.indexOf('application/json') === -1) {
                 spinner.fail();
-                logr('Failed.Not valid data.');
-                return;
+                return logr('Failed.Not valid data.');
             }
 
             if (body.status !== 'OK') {
                 spinner.fail();
-                logr(body.comment);
-                return;
+                return logr(body.comment);
             }
-
             spinner.succeed();
 
             if ( self.noChart ) {
-
                 let table = new Table({
                     head: [CB('Contest'), CB('Rank'), CB('Rating change'), CB('New rating')]
                 });
@@ -90,8 +86,7 @@ export default class Userrating {
                     ]);
                 });
 
-                log(table.toString());
-                return;
+                return log(table.toString());
             }
 
             let axisX = [];

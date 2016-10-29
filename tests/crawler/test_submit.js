@@ -827,7 +827,7 @@ describe('Codeforces', function() {
                     sinon.stub(helpers, 'checkPath').yields(null);
                     sinon.stub(instanceSubmit, 'prepareInput').yields(null, { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields(null,'adad', { handle: 'some', password: 'adad', logout: true, contestId: 123, problemIndex: 'A', language: 10, codePath: 'ada' });
-                    sinon.stub(instanceSubmit, 'login').yields(null,  { handle: 'some', password: 'adad' });
+                    sinon.stub(instanceSubmit, 'login').yields(null, 'someToken',  { handle: 'some', password: 'adad' });
                     sinon.stub(fs,'createReadStream').returns('adad');
                     sinon.stub(request,'post').yields('posterror');
                     sinon.stub(helpers,'log', function (text) {});
@@ -860,7 +860,7 @@ describe('Codeforces', function() {
                     sinon.stub(helpers, 'checkPath').yields(null);
                     sinon.stub(instanceSubmit, 'prepareInput').yields(null, { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields(null,'adad', { handle: 'some', password: 'adad', logout: true, contestId: 123, problemIndex: 'A', language: 10, codePath: 'ada' });
-                    sinon.stub(instanceSubmit, 'login').yields(null,  { handle: 'some', password: 'adad' });
+                    sinon.stub(instanceSubmit, 'login').yields(null, 'someToken',  { handle: 'some', password: 'adad' });
                     sinon.stub(fs,'createReadStream').returns('adad');
                     sinon.stub(request,'post').yields(null, { headers: {  } }, {});
                     sinon.stub(helpers,'log', function (text) {});
@@ -893,7 +893,7 @@ describe('Codeforces', function() {
                     sinon.stub(helpers, 'checkPath').yields(null);
                     sinon.stub(instanceSubmit, 'prepareInput').yields(null, { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields(null,'adad', { handle: 'some', password: 'adad', logout: true, contestId: 123, problemIndex: 'A', language: 10, codePath: 'ada' });
-                    sinon.stub(instanceSubmit, 'login').yields(null,  { handle: 'some', password: 'adad' });
+                    sinon.stub(instanceSubmit, 'login').yields(null, 'someToken',  { handle: 'some', password: 'adad' });
                     sinon.stub(fs,'createReadStream').returns('adad');
                     sinon.stub(request,'post').yields(null, { headers: { location: 'adad' } }, {});
                     sinon.stub(helpers,'log', function (text) {});
@@ -926,7 +926,7 @@ describe('Codeforces', function() {
                     sinon.stub(helpers, 'checkPath').yields(null);
                     sinon.stub(instanceSubmit, 'prepareInput').yields(null, { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields(null,'adad', { handle: 'some', password: 'adad', logout: true, contestId: 123, problemIndex: 'A', language: 10, codePath: 'ada' });
-                    sinon.stub(instanceSubmit, 'login').yields(null,  { handle: 'some', password: 'adad' });
+                    sinon.stub(instanceSubmit, 'login').yields(null, 'someToken',  { handle: 'some', password: 'adad' });
                     sinon.stub(fs,'createReadStream').returns('adad');
                     sinon.stub(request,'post').yields(null, { headers: { location: 'adad' } }, `<div class="for__source">someError</div>`);
                     sinon.stub(helpers,'log', function (text) {});
@@ -959,7 +959,7 @@ describe('Codeforces', function() {
                     sinon.stub(helpers, 'checkPath').yields(null);
                     sinon.stub(instanceSubmit, 'prepareInput').yields(null, { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields(null,'adad', { handle: 'some', password: 'adad', logout: true, contestId: 123, problemIndex: 'A', language: 10, codePath: 'ada', type: 'contest' });
-                    sinon.stub(instanceSubmit, 'login').yields(null,  { handle: 'some', password: 'adad' });
+                    sinon.stub(instanceSubmit, 'login').yields(null, 'someToken',  { handle: 'some', password: 'adad', logout: true, contestId: 123, problemIndex: 'A', language: 10, codePath: 'ada', type: 'contest' });
                     sinon.stub(fs,'createReadStream').returns('adad');
                     sinon.stub(request,'post').yields(null, { headers: { location: '/contest/123/my' } }, {});
                     sinon.stub(helpers,'log', function (text) {});
@@ -992,7 +992,7 @@ describe('Codeforces', function() {
                     sinon.stub(helpers, 'checkPath').yields(null);
                     sinon.stub(instanceSubmit, 'prepareInput').yields(null, { handle: 'some', password: 'adad' });
                     sinon.stub(instanceSubmit, 'getCSRFToken').yields(null,'adad', { handle: 'some', password: 'adad', logout: true, contestId: 123, problemIndex: 'A', language: 10, codePath: 'ada', type: 'gym' });
-                    sinon.stub(instanceSubmit, 'login').yields(null,  { handle: 'some', password: 'adad' });
+                    sinon.stub(instanceSubmit, 'login').yields(null, 'someToken',  { handle: 'some', password: 'adad', logout: true, contestId: 123, problemIndex: 'A', language: 10, codePath: 'ada', type: 'gym' });
                     sinon.stub(fs,'createReadStream').returns('adad');
                     sinon.stub(request,'post').yields(null, { headers: { location: '/gym/123/my' } }, {});
                     sinon.stub(helpers,'log', function (text) {});

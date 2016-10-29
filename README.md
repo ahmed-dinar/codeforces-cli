@@ -25,7 +25,7 @@ A simple and useful Command Line tool for Codeforces coders
 
 ## Releases
 #### Work in progress
-<img src="https://cdn.meme.am/instances/500x/67479527.jpg" width="300" >
+
 
 ## Inspirations
 - [Codeforces API](http://codeforces.com/api/help)
