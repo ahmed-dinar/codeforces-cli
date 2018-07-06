@@ -13,7 +13,8 @@
     "lint": "./node_modules/.bin/eslint -c .eslintrc src/**",
     "single": "./node_modules/.bin/nyc ./node_modules/.bin/mocha  --compilers js:babel-register \"tests/crawler/test_ratings.js\" & npm run cov-html",
     "snyk-protect": "snyk protect",
-    "prepublish": "npm run snyk-protect"
+    "prepublish": "npm run snyk-protect",
+    "prepare": "npm run snyk-protect"
   },
   "nyc": {
     "include": [
@@ -81,7 +82,7 @@
     "qs": "^6.2.1",
     "request": "^2.75.0",
     "striptags": "^2.1.1",
-    "snyk": "^1.25.0"
+    "snyk": "^1.88.1"
   },
   "snyk": true
 }
