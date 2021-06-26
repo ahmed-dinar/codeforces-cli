@@ -80,7 +80,7 @@
     "ora": "^0.3.0",
     "qs": "^6.2.1",
     "request": "^2.75.0",
-    "striptags": "^2.1.1",
+    "striptags": "^3.2.0",
     "snyk": "^1.25.0"
   },
   "snyk": true
